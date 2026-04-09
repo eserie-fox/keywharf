@@ -5,7 +5,7 @@ from __future__ import annotations
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.domain.errors import KeywharfError
 from keywharf.domain.results import ApplyResult
-from keywharf.services.apply_managed_config import apply_managed_config
+from keywharf.services.managed_config_applier import apply_managed_config
 from keywharf.services.managed_hosts import load_managed_hosts
 from keywharf.services.privilege import (
     can_delete_path,

@@ -13,7 +13,7 @@ from keywharf.services.remote_hosts import (
     build_remote_host_config_from_selection,
     load_remote_host_map,
 )
-from keywharf.services.render_managed_config import render_managed_config
+from keywharf.services.managed_config_renderer import render_managed_config
 from keywharf.services.validate import validate_workspace
 from keywharf.storage.ssh_files import list_managed_key_files
 from keywharf.storage.state_store import load_state

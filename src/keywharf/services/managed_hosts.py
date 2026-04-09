@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.domain.models import SSHHostConfig
-from keywharf.services.apply_managed_config import apply_managed_config
-from keywharf.services.render_managed_config import render_managed_config
+from keywharf.services.managed_config_applier import apply_managed_config
+from keywharf.services.managed_config_renderer import render_managed_config
 from keywharf.ssh_config.parser import parse_ssh_config
 from keywharf.storage.managed_files import read_managed_config
 
