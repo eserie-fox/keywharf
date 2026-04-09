@@ -50,12 +50,14 @@ def summarize_host(host: SSHHostConfig) -> str:
 def render_endpoint_table(endpoints: list[RemoteEndpointOption]) -> Table:
     table = Table(show_header=True, header_style="bold")
     table.add_column("index", style="cyan", justify="right")
+    table.add_column("Name")
     table.add_column("HostName")
     table.add_column("Port")
     table.add_column("Comment")
     for index, endpoint in enumerate(endpoints):
         table.add_row(
             str(index),
+            endpoint.name or "",
             endpoint.hostname or "",
             str(endpoint.port or ""),
             endpoint.comment or "",
@@ -66,12 +68,14 @@ def render_endpoint_table(endpoints: list[RemoteEndpointOption]) -> Table:
 def render_auth_table(auths: list[RemoteAuthenticationOption]) -> Table:
     table = Table(show_header=True, header_style="bold")
     table.add_column("index", style="cyan", justify="right")
+    table.add_column("Name")
     table.add_column("User")
     table.add_column("IdentityFile")
     table.add_column("Comment")
     for index, auth in enumerate(auths):
         table.add_row(
             str(index),
+            auth.name or "",
             auth.user or "",
             auth.identity_file or "",
             auth.comment or "",

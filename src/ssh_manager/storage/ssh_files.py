@@ -25,6 +25,16 @@ def list_ssh_key_files(ssh_dir: Path) -> list[str]:
     return results
 
 
+def list_managed_key_files(managed_keys_dir: Path) -> list[str]:
+    if not managed_keys_dir.exists():
+        return []
+    return sorted(
+        path.relative_to(managed_keys_dir).as_posix()
+        for path in managed_keys_dir.rglob("*")
+        if path.is_file() and not path.name.endswith(".pub")
+    )
+
+
 def read_ssh_config(path: Path) -> str:
     if not path.exists():
         return ""

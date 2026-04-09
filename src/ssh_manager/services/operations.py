@@ -46,13 +46,20 @@ def add_host(
         endpoint_id=endpoint_id,
         auth_id=auth_id,
     )
-    copy_identity_file(
-        new_host.get_ssh_original_identity_file(),
-        new_host.get_ssh_identity_file(),
-    )
+    source_identity = new_host.get_ssh_original_identity_file()
+    target_identity = new_host.get_ssh_identity_file()
+    copied_identity = False
+    if source_identity and target_identity:
+        copy_identity_file(source_identity, target_identity)
+        copied_identity = True
 
     updated_hosts = sorted([*current_hosts, new_host], key=lambda host: host.name or "")
-    write_local_hosts(config, updated_hosts, backup=True)
+    try:
+        write_local_hosts(config, updated_hosts, backup=True)
+    except Exception:
+        if copied_identity and target_identity:
+            delete_identity_file(target_identity)
+        raise
     return HostMutationResult(host=new_host, hosts=updated_hosts)
 
 
@@ -67,12 +74,12 @@ def resolve_local_host(
         index = int(name_or_index)
     except ValueError as exc:
         raise SSHManagerError(
-            f"No host named/indexed '{name_or_index}' found in local ssh config."
+            f"No host named/indexed '{name_or_index}' found in ssh-manager managed config."
         ) from exc
 
     if index < 0 or index >= len(current_hosts):
         raise SSHManagerError(
-            f"No host named/indexed '{name_or_index}' found in local ssh config."
+            f"No host named/indexed '{name_or_index}' found in ssh-manager managed config."
         )
     return index, current_hosts[index]
 
@@ -84,9 +91,9 @@ def remove_host(
     name_or_index: str,
 ) -> HostMutationResult:
     index, host = resolve_local_host(current_hosts, name_or_index)
-    delete_identity_file(host.get_ssh_identity_file())
     updated_hosts = [item for item_index, item in enumerate(current_hosts) if item_index != index]
     write_local_hosts(config, updated_hosts, backup=True)
+    delete_identity_file(host.get_ssh_identity_file())
     return HostMutationResult(host=host, hosts=updated_hosts)
 
 

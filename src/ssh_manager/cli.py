@@ -14,7 +14,7 @@ from ssh_manager.version import __version__
 
 app = typer.Typer(
     name="ssh-manager",
-    help="Manage local SSH config alongside a remote key repository.",
+    help="Select remote SSH hosts into local desired state, then render/apply ssh-manager owned SSH config fragments.",
     invoke_without_command=True,
 )
 

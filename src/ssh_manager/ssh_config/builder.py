@@ -18,10 +18,10 @@ from ssh_manager.ssh_config.render import render_host_config, render_ssh_config
 
 
 def get_identity_file_path(
-    ssh_directory: str | Path, server_name: str, original_identifier_file_path: str
+    managed_keys_directory: str | Path, server_name: str, original_identifier_file_path: str
 ) -> str:
-    ssh_dir = Path(str(ssh_directory)).expanduser()
-    return (ssh_dir / server_name / Path(original_identifier_file_path).name).as_posix()
+    keys_dir = Path(str(managed_keys_directory)).expanduser()
+    return (keys_dir / server_name / Path(original_identifier_file_path).name).as_posix()
 
 
 @dataclass(slots=True)
@@ -57,7 +57,7 @@ def build_host_config(choice: SSHHostConfigChoice) -> SSHHostConfig:
     if auth.identity_file:
         identity_source = choice.manager_config.resolve_from_local_repo(auth.identity_file).as_posix()
         identity_target = get_identity_file_path(
-            choice.manager_config.ssh_dir,
+            choice.manager_config.managed_keys_dir,
             host.server_name,
             auth.identity_file,
         )

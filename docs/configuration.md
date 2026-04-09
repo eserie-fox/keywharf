@@ -2,7 +2,7 @@
 
 ## Data Root Resolution
 
-Canonical naming in this phase is `SSH_MANAGER_DATA_ROOT`.
+Canonical naming is `SSH_MANAGER_DATA_ROOT`.
 
 Resolution order:
 
@@ -15,13 +15,16 @@ Marker search looks at the current working directory, its parents, the user home
 
 ## Manager Config
 
-The manager config is a JSON object, typically stored at `<data-root>/config.json`.
+Manager config is a JSON object, typically stored at `<data-root>/config.json`.
 
-Current fields:
+Fields:
 
 - `ssh_key_remote_repo`: git remote URL for the SSH key/config repo
 - `ssh_key_local_repo`: local checkout path for that repo
-- `ssh_dir`: SSH directory containing the managed `config` file
+- `ssh_dir`: base SSH directory
+- `managed_config_path`: manager-owned SSH config fragment path
+- `managed_keys_dir`: manager-owned copied key directory
+- `state_path`: local desired-state file path
 
 Example:
 
@@ -29,7 +32,10 @@ Example:
 {
   "ssh_key_remote_repo": "git@your.git.server:org/keys.git",
   "ssh_key_local_repo": "%{DATA_ROOT}/repos/keys",
-  "ssh_dir": "~/.ssh"
+  "ssh_dir": "~/.ssh",
+  "managed_config_path": "~/.ssh/managed/ssh-manager.conf",
+  "managed_keys_dir": "~/.ssh/managed/keys",
+  "state_path": "%{DATA_ROOT}/state/state.json"
 }
 ```
 
@@ -37,48 +43,123 @@ Path behavior:
 
 - `%{DATA_ROOT}` expands to the resolved data root
 - `~` and environment variables are expanded
-- relative paths resolve from the manager config file directory
+- relative paths resolve from the manager config directory
 
-## Remote Repo Config
+Defaults when fields are omitted:
 
-The remote repo still uses `config.json` in the repo root and keeps the existing schema for this phase.
+- `main_config_path = <ssh_dir>/config`
+- `managed_config_path = <ssh_dir>/managed/ssh-manager.conf`
+- `managed_keys_dir = <ssh_dir>/managed/keys`
+- `state_path = <data-root>/state/state.json`
 
-Each entry is a server definition with:
+## Local State Schema
+
+`state_path` is the desired source of truth:
+
+```json
+{
+  "version": 1,
+  "selected_hosts": [
+    {
+      "server_name": "demo",
+      "endpoint_name": "public",
+      "authentication_name": "home"
+    }
+  ]
+}
+```
+
+Rules:
+
+- one `ServerName` maps to at most one local selection entry
+- `endpoint_name` and `authentication_name` may be `null` only when the remote host still has exactly one endpoint/authentication option
+- state must be serializable and atomic-written through storage helpers
+- state does not store rendered SSH text or copied-key payloads
+
+## Remote Repo Config and Selector Rules
+
+The remote repo still uses `config.json` in the repo root and keeps the existing schema.
+
+Each entry contains:
 
 - `ServerName`
 - optional `Comment`
-- `Endpoint`: list of endpoint choices
-- `Authentication`: list of authentication choices
+- `Endpoint`
+- `Authentication`
 - optional `ExtraConfig`
 
-This refactor does not change that schema.
+Stage three adds stricter validation on selector stability:
 
-## Local SSH Config Behavior
+- `ServerName` must be unique
+- when a host has multiple `Endpoint` entries, every entry must have a unique `EndPointName`
+- when a host has multiple `Authentication` entries, every entry must have a unique `AuthenticationName`
+- local state selectors must resolve uniquely against the current remote repo
+- a previously valid `null` selector becomes invalid once the remote host grows from one option to multiple options
 
-- `add` still generates a `Host` block from one remote endpoint/authentication choice
-- copied identity files still land under `<ssh_dir>/<server_name>/`
-- `remove` still deletes the copied identity file and prunes the empty per-host directory
-- `flush` still rewrites the managed local SSH config with atomic replace and optional backup
+## Ownership Boundary
 
-## `check` Semantics
+ssh-manager now manages:
 
-`check` is validation-only in this phase.
+- `managed_config_path`
+- `managed_keys_dir`
+- `state_path`
+- the main SSH config only when `install-include` is explicitly run
 
-It verifies:
+ssh-manager does not manage:
 
-- the remote config JSON loads successfully
-- the config is not empty
-- each server has a non-empty `ServerName`
-- each referenced `IdentityFile` exists relative to the local repo checkout
+- unrelated user `Host` entries in `<ssh_dir>/config`
+- `Match` blocks
+- other `Include` directives
+- user comments and ordering in the main config
 
-It does not:
+## Managed Output Behavior
 
-- sort the remote config
-- rewrite `config.json`
-- create `.bak` files
+- `select` / `deselect` update only `state_path`
+- `render` resolves state and prints the desired managed config preview without writing files
+- `apply` validates, renders, copies manager-owned keys, atomically replaces `managed_config_path`, and removes stale managed keys
+- `local list/show` compare state with the current managed output and expose `applied`, `pending`, `invalid`, and `orphaned`
+
+The main config is not the source of truth, and the managed config is not the source of truth either. The state file is.
+
+## `install-include` Semantics
+
+`install-include` is the explicit command for attaching the manager-owned fragment to OpenSSH.
+
+Behavior:
+
+- default target is `<ssh_dir>/config`
+- scans only top-level `Include` lines
+- ignores commented lines
+- treats exact path matches and glob coverage of `managed_config_path` as already installed
+- if the main config does not exist, creates a minimal file containing only the ssh-manager include block
+- if the main config exists and lacks the include, appends a small include block at EOF
+- supports `--dry-run`
+
+Other commands do not modify the main config.
+
+## Validation and Safety Guards
+
+`validate` now covers:
+
+- manager config loading
+- remote repo schema and identity-file existence
+- state schema and selector stability
+- warnings for missing include installation
+- warnings for orphaned managed hosts
+
+`apply` adds a safety guard:
+
+- if local state is empty but `managed_config_path` still contains hosts, `apply` fails by default
+- `--allow-empty` is required to intentionally clear a non-empty managed config
 
 ## Compatibility Notes
 
 - `SSH_MANAGER_DATA_ROOT` is the documented name going forward
 - legacy `SSH_CONFIG_DATA_ROOT` is still accepted
-- command names remain `pull`, `local`, `remote`, `add`, `remove`, `flush`, and `check`
+- recommended commands are now `init`, `validate`, `render`, `apply`, `select`, and `deselect`
+- compatibility aliases remain:
+  - `add -> select`
+  - `remove -> deselect`
+  - `check -> validate`
+  - `flush -> apply`
+- no automatic migration is performed for stage-two setups that used `managed_config_path` as implicit state

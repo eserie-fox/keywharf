@@ -1,6 +1,8 @@
 {
-  "ssh_key_remote_repo": "git@gitxxx.com:yyy/zzz.git", 
-  "ssh_key_local_repo": "/path/to/repo_dir",
-  "ssh_dir": "~/.ssh/"
+  "ssh_key_remote_repo": "git@gitxxx.com:yyy/zzz.git",
+  "ssh_key_local_repo": "%{DATA_ROOT}/repos/keys",
+  "ssh_dir": "~/.ssh",
+  "managed_config_path": "~/.ssh/managed/ssh-manager.conf",
+  "managed_keys_dir": "~/.ssh/managed/keys",
+  "state_path": "%{DATA_ROOT}/state/state.json"
 }
-

@@ -20,7 +20,11 @@ from ssh_manager.domain.errors import SSHManagerError
 
 
 console = Console()
-app = typer.Typer(name="remote", no_args_is_help=True, help="Inspect remote repo configs")
+app = typer.Typer(
+    name="remote",
+    no_args_is_help=True,
+    help="Inspect remote repo configs and stable selectors",
+)
 
 
 @app.command("list")

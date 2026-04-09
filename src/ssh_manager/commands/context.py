@@ -37,6 +37,10 @@ def _require_state(ctx: typer.Context) -> CLIState:
     return state
 
 
+def get_cli_state(ctx: typer.Context) -> CLIState:
+    return _require_state(ctx)
+
+
 def get_manager_config(ctx: typer.Context) -> ManagerConfig:
     state = _require_state(ctx)
     if state.manager_config is not None:

@@ -12,7 +12,7 @@ from ssh_manager.services.remote_hosts import load_remote_host_map, remote_host_
 from ssh_manager.storage.ssh_files import (
     copy_identity_file,
     delete_identity_file,
-    list_ssh_key_files,
+    list_managed_key_files,
 )
 
 
@@ -35,7 +35,7 @@ class SSHManager:
         return self._model.ssh_config_path().as_posix()
 
     def get_ssh_key_list(self) -> list[str]:
-        return list_ssh_key_files(self._model.ssh_dir)
+        return list_managed_key_files(self._model.managed_keys_dir)
 
     def pull_ssh_key_repo(self) -> None:
         pull_remote_repo(self._model)

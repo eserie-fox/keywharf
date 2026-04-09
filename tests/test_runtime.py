@@ -24,6 +24,21 @@ def test_resolve_config_path_prefers_cli_override(tmp_path: Path) -> None:
     assert resolved == override_path.resolve()
 
 
+def test_load_manager_config_uses_absolute_config_parent_as_data_root(tmp_path: Path) -> None:
+    data_root = make_data_root(tmp_path)
+    config_path = data_root / "config.json"
+    write_manager_config(config_path)
+
+    loaded = load_manager_config(config_path)
+
+    assert loaded.data_root == data_root.resolve()
+    assert loaded.ssh_dir == (data_root / "ssh-home").resolve()
+    assert loaded.managed_config_path == (
+        data_root / "ssh-home" / "managed" / "ssh-manager.conf"
+    ).resolve()
+    assert loaded.state_path == (data_root / "state" / "state.json").resolve()
+
+
 def test_load_manager_config_resolves_paths_from_config_dir_and_data_root(tmp_path: Path) -> None:
     data_root = make_data_root(tmp_path)
     config_path = data_root / "nested" / "configs" / "manager.json"
@@ -31,6 +46,7 @@ def test_load_manager_config_resolves_paths_from_config_dir_and_data_root(tmp_pa
         config_path,
         ssh_key_local_repo="../repos/keys",
         ssh_dir="%{DATA_ROOT}/ssh-home",
+        state_path="%{DATA_ROOT}/state/custom-state.json",
     )
 
     loaded = load_manager_config(config_path, data_root=data_root)
@@ -38,6 +54,29 @@ def test_load_manager_config_resolves_paths_from_config_dir_and_data_root(tmp_pa
     assert loaded.config_path == config_path.resolve()
     assert loaded.ssh_key_local_repo == (config_path.parent / "../repos/keys").resolve()
     assert loaded.ssh_dir == (data_root / "ssh-home").resolve()
+    assert loaded.main_config_path == (data_root / "ssh-home" / "config").resolve()
+    assert loaded.managed_config_path == (
+        data_root / "ssh-home" / "managed" / "ssh-manager.conf"
+    ).resolve()
+    assert loaded.managed_keys_dir == (data_root / "ssh-home" / "managed" / "keys").resolve()
+    assert loaded.state_path == (data_root / "state" / "custom-state.json").resolve()
+
+
+def test_load_manager_config_allows_managed_path_overrides(tmp_path: Path) -> None:
+    data_root = make_data_root(tmp_path)
+    config_path = data_root / "config.json"
+    write_manager_config(
+        config_path,
+        managed_config_path="./state/managed.conf",
+        managed_keys_dir="../shared/managed-keys",
+        state_path="./state/desired.json",
+    )
+
+    loaded = load_manager_config(config_path, data_root=data_root)
+
+    assert loaded.managed_config_path == (config_path.parent / "state" / "managed.conf").resolve()
+    assert loaded.managed_keys_dir == (config_path.parent / "../shared/managed-keys").resolve()
+    assert loaded.state_path == (config_path.parent / "state" / "desired.json").resolve()
 
 
 def test_resolve_data_root_prefers_primary_env_over_primary_marker(tmp_path: Path) -> None:

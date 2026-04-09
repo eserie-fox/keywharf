@@ -22,6 +22,21 @@ def _normalize_path(base: Path, value: str | Path, data_root: Path) -> Path:
     return candidate
 
 
+def default_manager_config_payload(
+    *,
+    ssh_key_remote_repo: str = "git@example.com:org/keys.git",
+    ssh_dir: str = "~/.ssh",
+) -> dict[str, str]:
+    return {
+        "ssh_key_remote_repo": ssh_key_remote_repo,
+        "ssh_key_local_repo": "%{DATA_ROOT}/repos/keys",
+        "ssh_dir": ssh_dir,
+        "managed_config_path": f"{ssh_dir}/managed/ssh-manager.conf",
+        "managed_keys_dir": f"{ssh_dir}/managed/keys",
+        "state_path": "%{DATA_ROOT}/state/state.json",
+    }
+
+
 def resolve_config_path(
     config_override: Path | None = None,
     *,
@@ -36,15 +51,13 @@ def resolve_config_path(
         resolved_data_root = data_root or resolve_data_root(cwd=cwd, home=home, env=env)
         return (resolved_data_root / "config.json").resolve()
 
+    raw_candidate = Path(config_override).expanduser()
+    if raw_candidate.is_absolute() and data_root is None:
+        return raw_candidate.resolve()
+
     resolved_data_root = data_root
     if resolved_data_root is None:
-        try:
-            resolved_data_root = resolve_data_root(cwd=cwd, home=home, env=env)
-        except RuntimeError:
-            candidate = Path(config_override).expanduser()
-            if not candidate.is_absolute():
-                raise
-            resolved_data_root = candidate.resolve().parent
+        resolved_data_root = resolve_data_root(cwd=cwd, home=home, env=env)
 
     expanded = expand_data_root(config_override, resolved_data_root)
     candidate = Path(str(expanded)).expanduser()
@@ -65,18 +78,18 @@ def load_manager_config(
 ) -> ManagerConfig:
     """Load the manager config with paths fully resolved."""
 
+    absolute_override = None
+    if config_override is not None:
+        candidate = Path(config_override).expanduser()
+        if candidate.is_absolute():
+            absolute_override = candidate.resolve()
+
     if data_root is not None:
         resolved_data_root = data_root
+    elif absolute_override is not None:
+        resolved_data_root = absolute_override.parent
     else:
-        try:
-            resolved_data_root = resolve_data_root(cwd=cwd, home=home, env=env)
-        except RuntimeError:
-            if config_override is None:
-                raise
-            candidate = Path(config_override).expanduser()
-            if not candidate.is_absolute():
-                raise
-            resolved_data_root = candidate.resolve().parent
+        resolved_data_root = resolve_data_root(cwd=cwd, home=home, env=env)
 
     config_path = resolve_config_path(
         config_override,
@@ -91,6 +104,21 @@ def load_manager_config(
         config_path.parent, payload["ssh_key_local_repo"], resolved_data_root
     )
     ssh_dir = _normalize_path(config_path.parent, payload["ssh_dir"], resolved_data_root)
+    managed_config_path = (
+        _normalize_path(config_path.parent, payload["managed_config_path"], resolved_data_root)
+        if "managed_config_path" in payload
+        else (ssh_dir / "managed" / "ssh-manager.conf").resolve()
+    )
+    managed_keys_dir = (
+        _normalize_path(config_path.parent, payload["managed_keys_dir"], resolved_data_root)
+        if "managed_keys_dir" in payload
+        else (ssh_dir / "managed" / "keys").resolve()
+    )
+    state_path = (
+        _normalize_path(config_path.parent, payload["state_path"], resolved_data_root)
+        if "state_path" in payload
+        else (resolved_data_root / "state" / "state.json").resolve()
+    )
 
     return ManagerConfig(
         data_root=resolved_data_root,
@@ -98,6 +126,9 @@ def load_manager_config(
         ssh_key_remote_repo=str(payload["ssh_key_remote_repo"]),
         ssh_key_local_repo=ssh_key_local_repo,
         ssh_dir=ssh_dir,
+        managed_config_path=managed_config_path,
+        managed_keys_dir=managed_keys_dir,
+        state_path=state_path,
         raw=dict(payload),
     )
 
