@@ -22,7 +22,7 @@ classifiers = [
     "Topic :: System :: Systems Administration",
 ]
 dependencies = [
-    "gitpython>=3.1",
+    "pydantic>=2.7,<3",
     "rich>=13",
     "typer>=0.12",
 ]
@@ -44,6 +44,9 @@ license-files = ["LICENSE"]
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["ssh_manager*"]
+
+[tool.setuptools.package-data]
+ssh_manager = ["config_defaults/**/*.json", "templates/**/*.json"]
 
 [tool.setuptools.dynamic]
 version = {attr = "ssh_manager.version.__version__"}

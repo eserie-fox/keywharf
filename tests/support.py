@@ -4,11 +4,17 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ssh_manager.config.loader import load_resolved_manager_config
+
 
 def write_json(path: Path, payload: Any) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return path
+
+
+def read_json(path: Path) -> Any:
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def make_data_root(base: Path, *, marker_name: str = "SSH_MANAGER_DATA_ROOT") -> Path:
@@ -21,17 +27,18 @@ def make_data_root(base: Path, *, marker_name: str = "SSH_MANAGER_DATA_ROOT") ->
 def manager_config_payload(
     *,
     ssh_key_remote_repo: str = "git@example.com:org/keys.git",
-    ssh_key_local_repo: str = "%{DATA_ROOT}/repos/keys",
+    ssh_key_local_repo: str | None = None,
     ssh_dir: str = "%{DATA_ROOT}/ssh-home",
     managed_config_path: str | None = None,
     managed_keys_dir: str | None = None,
     state_path: str | None = None,
 ) -> dict[str, Any]:
-    payload = {
+    payload: dict[str, Any] = {
         "ssh_key_remote_repo": ssh_key_remote_repo,
-        "ssh_key_local_repo": ssh_key_local_repo,
         "ssh_dir": ssh_dir,
     }
+    if ssh_key_local_repo is not None:
+        payload["ssh_key_local_repo"] = ssh_key_local_repo
     if managed_config_path is not None:
         payload["managed_config_path"] = managed_config_path
     if managed_keys_dir is not None:
@@ -45,7 +52,7 @@ def write_manager_config(
     config_path: Path,
     *,
     ssh_key_remote_repo: str = "git@example.com:org/keys.git",
-    ssh_key_local_repo: str = "%{DATA_ROOT}/repos/keys",
+    ssh_key_local_repo: str | None = None,
     ssh_dir: str = "%{DATA_ROOT}/ssh-home",
     managed_config_path: str | None = None,
     managed_keys_dir: str | None = None,
@@ -62,6 +69,10 @@ def write_manager_config(
             state_path=state_path,
         ),
     )
+
+
+def load_config(config_path: Path, *, data_root: Path | None = None):
+    return load_resolved_manager_config(config_path, data_root=data_root)
 
 
 def selection_payload(
@@ -142,7 +153,11 @@ def write_remote_repo_config(repo_root: Path, payload: list[dict[str, Any]] | No
     return write_json(repo_root / "config.json", payload or remote_repo_payload())
 
 
-def write_identity_file(repo_root: Path, relative_path: str = "keys/id_demo", content: str = "PRIVATE KEY") -> Path:
+def write_identity_file(
+    repo_root: Path,
+    relative_path: str = "keys/id_demo",
+    content: str = "PRIVATE KEY",
+) -> Path:
     path = repo_root / relative_path
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")

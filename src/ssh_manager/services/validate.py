@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from ssh_manager.config.resolver import ResolvedManagerConfig
 from ssh_manager.domain.results import ValidationResult
 from ssh_manager.services.install_include import detect_include
-from ssh_manager.services.local_hosts import load_managed_hosts
+from ssh_manager.services.managed_hosts import load_managed_hosts
 from ssh_manager.services.remote_hosts import (
     load_remote_host_list,
     load_remote_host_map,
@@ -14,7 +15,7 @@ from ssh_manager.services.remote_hosts import (
 from ssh_manager.storage.state_store import load_state
 
 
-def validate_workspace(config) -> ValidationResult:
+def validate_workspace(config: ResolvedManagerConfig) -> ValidationResult:
     errors: list[str] = []
     warnings: list[str] = []
 

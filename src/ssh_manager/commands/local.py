@@ -6,16 +6,19 @@ import json
 import re
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
 from ssh_manager.commands.context import get_manager_config
-from ssh_manager.commands.output import compile_pattern, summarize_host
+from ssh_manager.commands.output import (
+    compile_pattern,
+    console,
+    selection_summary,
+    summarize_host,
+)
 from ssh_manager.domain.results import LocalHostStatus
 from ssh_manager.services.local_view import get_local_status, list_local_statuses
 
 
-console = Console()
 app = typer.Typer(
     name="local",
     no_args_is_help=True,
@@ -55,7 +58,7 @@ def list_local(
         table.add_row(
             item.server_name,
             item.status,
-            _selection_summary(item),
+            selection_summary(item.selection),
             summarize_host(item.desired_host) if item.desired_host is not None else "-",
             summarize_host(item.current_host) if item.current_host is not None else "-",
         )
@@ -99,20 +102,9 @@ def _filter_statuses(
     return [item for item in statuses if regex.search(item.server_name)]
 
 
-def _selection_summary(item: LocalHostStatus) -> str:
-    if item.selection is None:
-        return "-"
-    parts = [item.selection.server_name]
-    if item.selection.endpoint_name is not None:
-        parts.append(f"endpoint={item.selection.endpoint_name}")
-    if item.selection.authentication_name is not None:
-        parts.append(f"auth={item.selection.authentication_name}")
-    return ", ".join(parts)
-
-
 def _render_status_detail(item: LocalHostStatus) -> None:
     if item.selection is not None:
-        console.print(f"Selection: {_selection_summary(item)}")
+        console.print(f"Selection: {selection_summary(item.selection)}")
     if item.resolved_selection is not None:
         endpoint_name = item.resolved_selection.endpoint.name or "<single>"
         auth_name = item.resolved_selection.authentication.name or "<single>"
@@ -126,3 +118,4 @@ def _render_status_detail(item: LocalHostStatus) -> None:
     if item.current_host is not None:
         console.print("Current managed host block:")
         console.print(item.current_host.to_string(0))
+

@@ -10,3 +10,6 @@ class SSHManagerError(Exception):
         super().__init__(message)
         self.exit_code = exit_code
 
+
+class PermissionOperationError(SSHManagerError):
+    """Raised when one mutating operation needs elevated privileges."""

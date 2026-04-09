@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+from ssh_manager.config.resolver import ResolvedManagerConfig
 from ssh_manager.domain.errors import SSHManagerError
-from ssh_manager.domain.models import ManagerConfig
 from ssh_manager.domain.results import LocalHostStatus
-from ssh_manager.services.local_hosts import load_managed_hosts
+from ssh_manager.services.managed_hosts import load_managed_hosts
 from ssh_manager.services.remote_hosts import build_remote_host_config_from_selection, load_remote_host_map
 from ssh_manager.storage.state_store import load_state
 
 
-def list_local_statuses(config: ManagerConfig) -> list[LocalHostStatus]:
+def list_local_statuses(config: ResolvedManagerConfig) -> list[LocalHostStatus]:
     state = load_state(config)
     current_hosts = load_managed_hosts(config)
     current_by_name = {
@@ -87,7 +87,7 @@ def list_local_statuses(config: ManagerConfig) -> list[LocalHostStatus]:
     return statuses
 
 
-def get_local_status(config: ManagerConfig, server_name: str) -> LocalHostStatus:
+def get_local_status(config: ResolvedManagerConfig, server_name: str) -> LocalHostStatus:
     for item in list_local_statuses(config):
         if item.server_name == server_name:
             return item

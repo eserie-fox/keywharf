@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -25,59 +24,6 @@ def _normalize_path_string(value: str | Path | None) -> str | None:
     if value is None:
         return None
     return str(value).replace("\\", "/")
-
-
-def _resolve_path(base: Path, value: str | Path, data_root: Path) -> Path:
-    text = str(value).replace("%{DATA_ROOT}", str(data_root))
-    text = os.path.expandvars(os.path.expanduser(text))
-    candidate = Path(text)
-    if not candidate.is_absolute():
-        candidate = (base / candidate).resolve()
-    else:
-        candidate = candidate.resolve()
-    return candidate
-
-
-@dataclass(slots=True)
-class ManagerConfig:
-    data_root: Path
-    config_path: Path
-    ssh_key_remote_repo: str
-    ssh_key_local_repo: Path
-    ssh_dir: Path
-    managed_config_path: Path
-    managed_keys_dir: Path
-    state_path: Path
-    raw: dict[str, Any] = field(default_factory=dict)
-
-    @property
-    def main_config_path(self) -> Path:
-        return self.ssh_dir / "config"
-
-    def ssh_config_path(self) -> Path:
-        """Compatibility alias for the manager-owned SSH config fragment path."""
-
-        return self.managed_config_path
-
-    def resolve_from_config_dir(self, value: str | Path) -> Path:
-        return _resolve_path(self.config_path.parent, value, self.data_root)
-
-    def resolve_from_local_repo(self, value: str | Path) -> Path:
-        return _resolve_path(self.ssh_key_local_repo, value, self.data_root)
-
-    def managed_key_path_for(self, host_name: str, original_identity_file: str) -> Path:
-        return self.managed_keys_dir / host_name / Path(original_identity_file).name
-
-    def data(self) -> dict[str, Any]:
-        return {
-            **self.raw,
-            "ssh_key_remote_repo": self.ssh_key_remote_repo,
-            "ssh_key_local_repo": self.ssh_key_local_repo.as_posix(),
-            "ssh_dir": self.ssh_dir.as_posix(),
-            "managed_config_path": self.managed_config_path.as_posix(),
-            "managed_keys_dir": self.managed_keys_dir.as_posix(),
-            "state_path": self.state_path.as_posix(),
-        }
 
 
 STATE_SCHEMA_VERSION = 1

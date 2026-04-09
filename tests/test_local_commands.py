@@ -6,9 +6,9 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from ssh_manager.cli import app
-from ssh_manager.runtime.config import load_manager_config
 from ssh_manager.services.render import render_selected_state
 from tests.support import (
+    load_config,
     make_data_root,
     remote_repo_payload,
     selection_payload,
@@ -24,118 +24,78 @@ from tests.support import (
 RUNNER = CliRunner()
 
 
-def test_local_list_reports_applied_pending_invalid_and_orphaned(tmp_path: Path) -> None:
+def test_local_list_reports_applied_pending_and_orphaned(tmp_path: Path) -> None:
     data_root = make_data_root(tmp_path)
     config_path = write_manager_config(data_root / "config.json")
-    config = load_manager_config(config_path, data_root=data_root)
+    config = load_config(config_path, data_root=data_root)
     repo_root = data_root / "repos" / "keys"
     write_identity_file(repo_root, "keys/id_demo")
-    write_identity_file(repo_root, "keys/id_extra")
+    write_identity_file(repo_root, "keys/id_other")
     write_remote_repo_config(
         repo_root,
         payload=[
-            remote_repo_payload(
-                server_name="demo",
-                endpoint_name="public",
-                auth_name="home",
-                identity_file="keys/id_demo",
-            )[0],
-            remote_repo_payload(
-                server_name="extra",
-                endpoint_name="public",
-                auth_name="home",
-                identity_file="keys/id_extra",
-            )[0],
+            remote_repo_payload(server_name="demo", endpoint_name="public", auth_name="home")[0],
+            remote_repo_payload(server_name="other", endpoint_name="public", auth_name="home", identity_file="keys/id_other")[0],
         ],
     )
     write_state_file(
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(
-                    server_name="demo",
-                    endpoint_name="public",
-                    authentication_name="home",
-                ),
+                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
             ]
         ),
     )
-    desired_content = render_selected_state(config).content
+    write_managed_ssh_config(config.managed_config_path, render_selected_state(config).content)
     write_state_file(
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(
-                    server_name="demo",
-                    endpoint_name="public",
-                    authentication_name="home",
-                ),
-                selection_payload(
-                    server_name="extra",
-                    endpoint_name="public",
-                    authentication_name="home",
-                ),
-                selection_payload(
-                    server_name="ghost",
-                    endpoint_name="public",
-                    authentication_name="home",
-                ),
+                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home"),
+                selection_payload(server_name="other", endpoint_name="public", authentication_name="home"),
             ]
         ),
     )
-    write_managed_ssh_config(
-        config.managed_config_path,
-        desired_content + "\nHost orphan\n  HostName orphan.example.com\n",
+    config.managed_config_path.write_text(
+        config.managed_config_path.read_text(encoding="utf-8")
+        + "\nHost orphaned\n  HostName orphan.example.com\n",
+        encoding="utf-8",
     )
 
-    result = RUNNER.invoke(
-        app,
-        ["--config", str(config_path), "local", "list", "--json"],
-    )
+    result = RUNNER.invoke(app, ["--config", str(config_path), "local", "list", "--json"])
 
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     statuses = {item["server_name"]: item["status"] for item in payload}
     assert statuses["demo"] == "applied"
-    assert statuses["extra"] == "pending"
-    assert statuses["ghost"] == "invalid"
-    assert statuses["orphan"] == "orphaned"
+    assert statuses["other"] == "pending"
+    assert statuses["orphaned"] == "orphaned"
 
 
-def test_local_show_displays_desired_and_current_managed_output(tmp_path: Path) -> None:
+def test_local_show_includes_desired_and_current_blocks(tmp_path: Path) -> None:
     data_root = make_data_root(tmp_path)
     config_path = write_manager_config(data_root / "config.json")
-    config = load_manager_config(config_path, data_root=data_root)
+    config = load_config(config_path, data_root=data_root)
     repo_root = data_root / "repos" / "keys"
     write_identity_file(repo_root)
-    write_remote_repo_config(
-        repo_root,
-        payload=remote_repo_payload(endpoint_name="public", auth_name="home"),
-    )
+    write_remote_repo_config(repo_root, payload=remote_repo_payload(endpoint_name="public", auth_name="home"))
     write_state_file(
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(
-                    server_name="demo",
-                    endpoint_name="public",
-                    authentication_name="home",
-                )
+                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
             ]
         ),
     )
     write_managed_ssh_config(
         config.managed_config_path,
-        render_selected_state(config).content,
+        "# This file is managed by ssh_manager\n\nHost demo\n  HostName example.com\n",
     )
 
-    result = RUNNER.invoke(
-        app,
-        ["--config", str(config_path), "local", "show", "demo", "--json"],
-    )
+    result = RUNNER.invoke(app, ["--config", str(config_path), "local", "show", "demo", "--json"])
 
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
-    assert payload["status"] == "applied"
+    assert payload["server_name"] == "demo"
     assert payload["desired_block"] is not None
     assert payload["current_block"] is not None

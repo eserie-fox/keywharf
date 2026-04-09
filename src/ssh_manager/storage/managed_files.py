@@ -7,7 +7,7 @@ import os
 import shlex
 from pathlib import Path
 
-from ssh_manager.domain.models import ManagerConfig
+from ssh_manager.config.resolver import ResolvedManagerConfig
 from ssh_manager.domain.results import IncludeInstallResult
 from ssh_manager.storage.ssh_files import read_ssh_config, write_ssh_config
 
@@ -15,12 +15,12 @@ from ssh_manager.storage.ssh_files import read_ssh_config, write_ssh_config
 SSH_MANAGER_INCLUDE_COMMENT = "# Added by ssh-manager"
 
 
-def read_managed_config(config: ManagerConfig) -> str:
+def read_managed_config(config: ResolvedManagerConfig) -> str:
     return read_ssh_config(config.managed_config_path)
 
 
 def write_managed_config(
-    config: ManagerConfig,
+    config: ResolvedManagerConfig,
     content: str,
     *,
     backup: bool = True,
@@ -29,7 +29,7 @@ def write_managed_config(
 
 
 def managed_key_path(
-    config: ManagerConfig,
+    config: ResolvedManagerConfig,
     host_name: str,
     original_identity_file: str,
 ) -> Path:
@@ -37,14 +37,14 @@ def managed_key_path(
 
 
 def include_line_for_config(
-    config: ManagerConfig,
+    config: ResolvedManagerConfig,
     *,
     home: Path | None = None,
 ) -> str:
     return f"Include {_format_include_path(config.managed_config_path, home=home)}"
 
 
-def include_is_installed(config: ManagerConfig) -> bool:
+def include_is_installed(config: ResolvedManagerConfig) -> bool:
     main_config_path = config.main_config_path
     if not main_config_path.exists():
         return False
@@ -56,7 +56,7 @@ def include_is_installed(config: ManagerConfig) -> bool:
 
 
 def install_include(
-    config: ManagerConfig,
+    config: ResolvedManagerConfig,
     *,
     dry_run: bool = False,
     backup: bool = True,
@@ -176,3 +176,4 @@ def _format_include_path(path: Path, *, home: Path | None = None) -> str:
     except ValueError:
         return candidate.as_posix()
     return Path("~").joinpath(relative).as_posix()
+

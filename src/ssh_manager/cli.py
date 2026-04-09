@@ -31,11 +31,6 @@ def callback(
         exists=False,
         readable=True,
     ),
-    auto_pull: bool = typer.Option(
-        False,
-        "--auto-pull",
-        help="Automatically pull the remote repo before command execution.",
-    ),
     version: bool = typer.Option(
         False,
         "--version",
@@ -47,7 +42,7 @@ def callback(
         typer.echo(__version__)
         raise typer.Exit()
 
-    ctx.obj = build_cli_state(config, auto_pull)
+    ctx.obj = build_cli_state(config)
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
         raise typer.Exit()

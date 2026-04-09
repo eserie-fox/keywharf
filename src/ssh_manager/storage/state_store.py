@@ -6,8 +6,9 @@ import json
 import os
 from pathlib import Path
 
+from ssh_manager.config.resolver import ResolvedManagerConfig
 from ssh_manager.domain.errors import SSHManagerError
-from ssh_manager.domain.models import LocalState, ManagerConfig, STATE_SCHEMA_VERSION
+from ssh_manager.domain.models import LocalState, STATE_SCHEMA_VERSION
 from ssh_manager.storage.json_store import read_json_object
 
 
@@ -15,11 +16,11 @@ def empty_state() -> LocalState:
     return LocalState.empty()
 
 
-def state_exists(config: ManagerConfig) -> bool:
+def state_exists(config: ResolvedManagerConfig) -> bool:
     return config.state_path.exists()
 
 
-def load_state(config: ManagerConfig, *, allow_missing: bool = True) -> LocalState:
+def load_state(config: ResolvedManagerConfig, *, allow_missing: bool = True) -> LocalState:
     path = config.state_path
     if not path.exists():
         if allow_missing:
@@ -50,7 +51,7 @@ def load_state(config: ManagerConfig, *, allow_missing: bool = True) -> LocalSta
     return state
 
 
-def save_state(config: ManagerConfig, state: LocalState) -> None:
+def save_state(config: ResolvedManagerConfig, state: LocalState) -> None:
     path = config.state_path
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_name(f"{path.name}.tmp")
@@ -69,7 +70,7 @@ def save_state(config: ManagerConfig, state: LocalState) -> None:
         raise
 
 
-def ensure_state_file(config: ManagerConfig) -> Path:
+def ensure_state_file(config: ResolvedManagerConfig) -> Path:
     if not config.state_path.exists():
         save_state(config, empty_state())
     return config.state_path

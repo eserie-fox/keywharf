@@ -7,10 +7,10 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from ssh_manager.config.resolver import ResolvedManagerConfig
 from ssh_manager.domain.errors import SSHManagerError
-from ssh_manager.domain.models import ManagerConfig
 from ssh_manager.ssh_config.parser import parse_ssh_config
-from ssh_manager.storage.managed_state import write_managed_config
+from ssh_manager.storage.managed_files import write_managed_config
 
 
 def validate_managed_config(content: str) -> None:
@@ -37,7 +37,7 @@ def validate_managed_config(content: str) -> None:
 
 
 def apply_managed_config(
-    config: ManagerConfig,
+    config: ResolvedManagerConfig,
     content: str,
     *,
     backup: bool = True,

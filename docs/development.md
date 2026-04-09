@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Python 3.11+
-- a virtual environment is recommended
+- system `git`
 
 Typical setup:
 
@@ -16,70 +16,89 @@ python -m pip install -e '.[dev]'
 ## Repository Layout
 
 - `src/ssh_manager/`: package source
-- `docs/`: architecture, configuration, CLI, and development notes
-- `tests/`: CLI/runtime/service regression coverage
-- `config_example/`: example manager and remote repo configs
+- `src/ssh_manager/commands/`: Typer command adapters
+- `src/ssh_manager/config/`: formal config loading and resolution
+- `src/ssh_manager/config_defaults/`: package-shipped JSON defaults
+- `src/ssh_manager/templates/`: package-shipped init templates
+- `src/ssh_manager/services/`: application logic
+- `src/ssh_manager/storage/`: file/state/git persistence helpers
+- `src/ssh_manager/ssh_config/`: SSH parse/build/render logic
+- `docs/`: project docs
+- `tests/`: test suite
 
-## Running From Source
+## Running
+
+From source:
 
 ```bash
 PYTHONPATH=src python -m ssh_manager --help
 ```
 
-Installed entrypoints continue to use `ssh-manager`.
+Installed entrypoint:
 
-## Test Suite
+```bash
+ssh-manager --help
+```
 
-Run the full suite with:
+## Tests
+
+Run the full suite:
 
 ```bash
 pytest
 ```
 
-Useful focused runs:
+Current test coverage includes:
 
-```bash
-pytest tests/test_cli.py
-pytest tests/test_runtime.py
-pytest tests/test_init.py
-pytest tests/test_state_store.py
-pytest tests/test_validate_service.py
-pytest tests/test_render_service.py
-pytest tests/test_apply_service.py
-pytest tests/test_select_commands.py
-pytest tests/test_local_commands.py
-pytest tests/test_install_include.py
-pytest tests/test_managed_config.py
-pytest tests/test_check_service.py
-```
+- CLI help/version and final command set
+- formal config defaults loading and merge contract
+- runtime path resolution and data-root discovery
+- package-resource-driven `init`
+- state persistence
+- validation and selector stability
+- render no-write behavior
+- apply orchestration and safety guards
+- include detection/installation
+- privilege helper and sudo re-exec flow
+- package resource availability
+- thin import surfaces
 
-Current baseline coverage includes:
+## Config Development Rules
 
-- CLI help/version and compatibility alias help
-- config path resolution and data-root precedence
-- `init` workspace skeleton creation
-- explicit state load/save behavior
-- selector stability and validation failures
-- preview-only render behavior
-- apply orchestration, atomic managed-config replacement, and empty-state guardrails
-- include detection and installation behavior
-- protection against accidental main-config modification
+Manager config follows the formal runtime config pattern:
+
+- defaults live in package JSON resources
+- file or mapping input is override only
+- merge happens before validation
+- runtime path resolution is explicit and separate
+
+Do not reintroduce:
+
+- hard-coded operational defaults scattered across field defaults
+- runtime path expansion during raw config load
+- repo-root example config directories
+
+## Command/Service Boundaries
+
+- keep CLI modules thin
+- keep privilege checks centralized
+- keep services free of Rich/Typer concerns
+- keep storage free of CLI concerns
+- keep the main SSH config outside normal write paths
 
 ## Packaging
 
-- setuptools uses standard `src` layout
-- version is loaded dynamically from `ssh_manager.version.__version__`
-- do not reintroduce duplicate version constants in source and `pyproject.toml`
-
-## Development Guidelines
-
-- keep CLI adapters thin; new business logic should land in `services/`
-- keep state and desired-output logic separate from file materialization
-- do not reintroduce “managed config as source of truth”
-- keep the main SSH config outside ssh-manager’s normal write path; only `install-include` may modify it
-- avoid import-time data-root side effects
+- all metadata and dependencies live in `pyproject.toml`
+- version comes from `ssh_manager.version.__version__`
+- package resources are shipped through setuptools package-data rules
 
 ## Hygiene
 
-- keep generated artifacts such as `*.egg-info`, `__pycache__`, `.pytest_cache`, `build/`, and `dist/` out of the repository
-- keep docs aligned with the current command model and state schema whenever behavior changes
+Keep generated noise out of the repository:
+
+- `__pycache__/`
+- `.pytest_cache/`
+- `*.egg-info/`
+- `build/`
+- `dist/`
+

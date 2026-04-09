@@ -5,10 +5,10 @@ from __future__ import annotations
 import filecmp
 from pathlib import Path
 
+from ssh_manager.config.resolver import ResolvedManagerConfig
 from ssh_manager.domain.errors import SSHManagerError
-from ssh_manager.domain.models import ManagerConfig
 from ssh_manager.domain.results import ManagedKeyCopyPlan, RenderResult
-from ssh_manager.services.local_hosts import load_managed_hosts
+from ssh_manager.services.managed_hosts import load_managed_hosts
 from ssh_manager.services.remote_hosts import (
     build_remote_host_config_from_selection,
     load_remote_host_map,
@@ -19,7 +19,7 @@ from ssh_manager.storage.ssh_files import list_managed_key_files
 from ssh_manager.storage.state_store import load_state
 
 
-def render_selected_state(config: ManagerConfig) -> RenderResult:
+def render_selected_state(config: ResolvedManagerConfig) -> RenderResult:
     validation = validate_workspace(config)
     if not validation.ok:
         raise SSHManagerError("\n".join(validation.errors))

@@ -2,17 +2,25 @@
 
 from __future__ import annotations
 
+from ssh_manager.config.resolver import ResolvedManagerConfig
 from ssh_manager.domain.errors import SSHManagerError
-from ssh_manager.domain.models import ManagerConfig
 from ssh_manager.domain.results import ApplyResult
 from ssh_manager.services.apply_managed_config import apply_managed_config
-from ssh_manager.services.local_hosts import load_managed_hosts
+from ssh_manager.services.managed_hosts import load_managed_hosts
+from ssh_manager.services.privilege import (
+    can_delete_path,
+    can_read_path,
+    can_write_directory,
+    can_write_file,
+    root_owned_hint,
+)
 from ssh_manager.services.render import render_selected_state
+from ssh_manager.services.remote_hosts import remote_config_path
 from ssh_manager.storage.ssh_files import copy_identity_file, delete_identity_file
 
 
 def apply_selected_state(
-    config: ManagerConfig,
+    config: ResolvedManagerConfig,
     *,
     backup: bool = True,
     dry_run: bool = False,
@@ -61,3 +69,56 @@ def apply_selected_state(
         changed=changed,
         dry_run=False,
     )
+
+
+def analyze_apply_root_requirements(
+    config: ResolvedManagerConfig,
+    render_result,
+    *,
+    backup: bool = True,
+) -> list[str]:
+    """Return concrete privilege reasons for one apply plan."""
+
+    reasons: list[str] = []
+    remote_config = remote_config_path(config)
+
+    for path, label in (
+        (config.state_path, "state file"),
+        (remote_config, "remote repository config"),
+        (config.managed_config_path, "managed config"),
+    ):
+        if path.exists() and not can_read_path(path):
+            reasons.append(
+                f"{label} is not readable by current user: {path}{root_owned_hint(path)}"
+            )
+
+    if not can_write_file(config.managed_config_path):
+        reasons.append(
+            f"managed config path is not writable by current user: {config.managed_config_path}{root_owned_hint(config.managed_config_path.parent)}"
+        )
+    if not can_write_directory(config.managed_keys_dir):
+        reasons.append(
+            f"managed keys directory is not writable by current user: {config.managed_keys_dir}{root_owned_hint(config.managed_keys_dir)}"
+        )
+    if backup and config.managed_config_path.exists() and not can_write_directory(config.managed_config_path.parent):
+        reasons.append(
+            f"managed config backup directory is not writable by current user: {config.managed_config_path.parent}{root_owned_hint(config.managed_config_path.parent)}"
+        )
+
+    for plan in render_result.planned_key_copies:
+        if not can_read_path(plan.source):
+            reasons.append(
+                f"identity source is not readable by current user: {plan.source}{root_owned_hint(plan.source)}"
+            )
+        if not can_write_file(plan.target):
+            reasons.append(
+                f"managed key target path is not writable by current user: {plan.target}{root_owned_hint(plan.target.parent)}"
+            )
+
+    for target in render_result.planned_key_deletes:
+        if not can_delete_path(target):
+            reasons.append(
+                f"managed key path is not removable by current user: {target}{root_owned_hint(target)}"
+            )
+
+    return reasons

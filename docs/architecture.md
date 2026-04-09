@@ -4,78 +4,82 @@
 
 `ssh-manager` is organized into explicit layers:
 
-- `commands`: Typer CLI adapters. They parse flags, map errors to exit codes, and format human/JSON output.
-- `services`: application logic for `init`, `pull`, `select/deselect`, `validate`, `render`, `apply`, local status views, and include installation.
-- `domain`: shared models and result objects such as `ManagerConfig`, local state models, render/apply results, and SSH host value objects.
-- `storage`: JSON/state I/O, git sync, manager-owned SSH config/key file writes, include detection/installation helpers, and atomic writes.
+- `commands`: Typer adapters. They parse CLI flags, format terminal/JSON output, run privilege re-exec, and translate errors into exit behavior.
+- `config`: formal manager-config schema, package defaults loading, deep merge, and runtime resolution.
+- `services`: application logic for `init`, `pull`, `select`, `deselect`, `validate`, `render`, `apply`, local views, and include installation.
+- `storage`: JSON/file I/O, git sync, manager-owned SSH file writes, include detection, and state persistence.
 - `ssh_config`: low-level parse/build/render logic for managed SSH host blocks.
-- `runtime`: data-root discovery, config loading, default config payload assembly, and path expansion.
+- `runtime`: data-root discovery and `%{DATA_ROOT}` token handling.
+- `domain`: state models, remote host models, SSH host value objects, result objects, and project-specific errors.
 
 ## Dependency Direction
 
-Preferred dependency direction is:
+Preferred direction:
 
-- `commands` -> `services`, `runtime`, `domain`
-- `services` -> `storage`, `ssh_config`, `domain`
-- `storage` -> `domain`
-- `runtime` -> `storage`, `domain`
+- `commands` -> `services`, `config`, `domain`
+- `services` -> `storage`, `ssh_config`, `config`, `domain`
+- `storage` -> `domain`, `config`
+- `config` -> `runtime`
 - `ssh_config` -> `domain`
+- `runtime` -> no heavier internal layer
 - `domain` -> no project-internal layer
 
 Avoid reverse dependencies. In particular:
 
-- `services` must not depend on `commands`
-- `storage` and `domain` must stay CLI-agnostic
-- CLI adapters should not implement business rules or file mutation logic
+- `services` must not depend on CLI modules
+- `storage` must stay CLI-agnostic
+- `config` must not depend on services
+- package `__init__.py` files stay thin and do not pull heavy runtime dependencies
 
-## State and Apply Flow
+## Data Flow
 
-Stage three changes the core flow from “managed config as state” to “explicit desired state plus apply”.
+The steady-state workflow is:
 
-The intended flow is:
+1. `init` creates data-root skeleton from package resources
+2. `pull` syncs the remote repo locally
+3. `select` / `deselect` mutate `state_path`
+4. `validate` checks manager config, remote repo schema, state, and include presence
+5. `render` resolves state into desired `SSHHostConfig` objects and managed config text
+6. `apply` copies required keys, atomically replaces `managed_config_path`, then removes stale keys
+7. `install-include` explicitly connects the managed fragment to the main SSH config
 
-1. `init` creates a data root, config template, and empty state file.
-2. `select` / `deselect` mutate `state_path` only.
-3. `validate` checks manager config, remote repo schema, local state, selector stability, and warnings such as missing include/orphaned managed hosts.
-4. `render` resolves state against the remote repo and produces a structured preview:
-   - desired `SSHHostConfig` objects
-   - managed config text
-   - planned key copies
-   - planned stale-key deletions
-5. `apply` runs validation, renders the desired output, syncs manager-owned keys, atomically replaces `managed_config_path`, and only then removes stale managed keys.
+This keeps:
 
-This keeps “selection state” and “materialized files” separate.
+- desired state separate from rendered output
+- rendered output separate from file materialization
+- main SSH config outside the normal write path
 
 ## Ownership Boundary
 
-The stage-two ownership boundary remains in force:
+`ssh-manager` owns only:
 
-- ssh-manager owns `managed_config_path`
-- ssh-manager owns `managed_keys_dir`
-- ssh-manager owns `state_path`
-- ssh-manager does not own the full main SSH config
-- `install-include` is the only explicit path that may minimally modify `<ssh_dir>/config`
+- `managed_config_path`
+- `managed_keys_dir`
+- `state_path`
 
-Operational consequences:
+`ssh-manager` does not own the user's broader SSH config world.
 
-- `local list/show` inspect local state and current managed output, not the whole user SSH world
-- `render` and `apply` operate only on manager-owned files
-- unrelated user `Host`, `Match`, `Include`, comments, and ordering remain untouched
+Normal commands do not rewrite the main SSH config. Only `install-include` may minimally append one include block.
 
-## Responsibility Boundaries
+## Formal Config
 
-- CLI override handling, config-path resolution, and user-facing error translation happen at the CLI/runtime boundary.
-- Services receive resolved `ManagerConfig` objects. They should not be asked to expand `~`, `%{DATA_ROOT}`, or relative paths.
-- The local desired state file is loaded/saved only through storage helpers, not directly from CLI code.
-- SSH text rendering/parsing belongs to `ssh_config`, not to commands or storage.
-- The legacy `SSHManager` class remains only as a thin compatibility facade over managed-output behavior. It is not the source of truth for desired state.
+Manager config follows one fixed contract:
 
-## Current Phase Boundaries
+1. load package defaults from `config_defaults/manager.json`
+2. deep-merge file or mapping override
+3. validate with Pydantic v2
+4. resolve runtime paths separately
 
-This phase intentionally does not do the following:
+Raw config remains declarative. Runtime expansion of `~`, env vars, `%{DATA_ROOT}`, and relative paths happens only in the resolver.
 
-- redesign the remote repo schema
-- support multiple selected variants for one `ServerName`
-- auto-import old stage-two managed config into local state
-- change the stage-two include ownership model
-- rename the package, distribution, or CLI
+## Privilege Model
+
+Mutating commands share one privilege flow:
+
+1. build canonical CLI invocation
+2. if `--sudo` is present, re-exec the full command through `sudo`
+3. otherwise run a fail-fast preflight against the concrete target paths
+4. abort early with retry guidance when privileges are insufficient
+
+This logic is centralized in `commands/_invocation.py`, `commands/_privilege.py`, and service-level privilege analyzers.
+

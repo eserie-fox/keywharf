@@ -6,12 +6,12 @@ import json
 import re
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
 from ssh_manager.commands.context import get_remote_hosts
 from ssh_manager.commands.output import (
     compile_pattern,
+    console,
     filter_names,
     render_auth_table,
     render_endpoint_table,
@@ -19,7 +19,6 @@ from ssh_manager.commands.output import (
 from ssh_manager.domain.errors import SSHManagerError
 
 
-console = Console()
 app = typer.Typer(
     name="remote",
     no_args_is_help=True,
@@ -48,19 +47,21 @@ def list_remote(
     names = filter_names(sorted(remote_hosts.keys()), regex)
 
     if json_output:
-        payload = (
-            {name: remote_hosts[name].to_dict() for name in names}
-            if verbose
-            else names
-        )
+        payload = {name: remote_hosts[name].to_dict() for name in names} if verbose else names
         typer.echo(json.dumps(payload, indent=2))
         return
 
     table = Table(show_header=True, header_style="bold")
-    table.add_column("index", justify="right", style="cyan")
-    table.add_column("config_name")
-    for index, name in enumerate(names):
-        table.add_row(str(index), name)
+    table.add_column("name")
+    table.add_column("endpoints", justify="right")
+    table.add_column("auth", justify="right")
+    for name in names:
+        remote_host = remote_hosts[name]
+        table.add_row(
+            name,
+            str(len(remote_host.endpoints)),
+            str(len(remote_host.authentication)),
+        )
     console.print(table)
 
     if verbose:
@@ -92,15 +93,10 @@ def show_remote(
 
     if remote_host.extra_config:
         table = Table(show_header=True, header_style="bold")
-        table.add_column("index", justify="right", style="cyan")
         table.add_column("Key")
         table.add_column("Value")
         table.add_column("Comment")
-        for index, item in enumerate(remote_host.extra_config):
-            table.add_row(
-                str(index),
-                item.key or "",
-                item.value or "",
-                item.comment or "",
-            )
+        for item in remote_host.extra_config:
+            table.add_row(item.key or "", item.value or "", item.comment or "")
         console.print(table)
+

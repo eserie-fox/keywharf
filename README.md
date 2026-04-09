@@ -1,107 +1,101 @@
 # ssh-manager
 
-`ssh-manager` is a Python 3.11+ CLI for managing SSH host entries from a remote SSH key/config repository. It no longer takes ownership of the whole `~/.ssh/config`. It manages only its own config fragment and managed key copies, and in this phase it also uses an explicit local state file so “which hosts are selected” is separate from “what has been applied”.
+`ssh-manager` is a Python 3.11+ CLI for managing a remote SSH host/key repository without taking over your whole `~/.ssh/config`.
 
-## Highlights
+It manages only:
 
-- Standard `src/ssh_manager/` layout with explicit `commands`, `services`, `domain`, `storage`, `ssh_config`, and `runtime` layers.
-- Recommended workflow: `init -> pull -> remote -> select -> validate -> render -> apply`.
-- Explicit local desired state at `state_path`; `managed_config_path` is now an apply artifact, not the source of truth.
-- Clear ownership boundary: only manager-owned config/key files are managed; the main SSH config is touched only by `install-include`.
-- Compatibility aliases remain for `add/remove/flush/check`, but the new command model is the primary interface.
+- one manager-owned SSH config fragment
+- one manager-owned key directory
+- one explicit local state file
 
-## Installation
+The source of truth is the local state file. The managed SSH config is an `apply` artifact, not the state source.
 
-```bash
-python3.11 -m venv .venv
-. .venv/bin/activate
-python -m pip install .
-ssh-manager --help
-```
+## Workflow
 
-For development:
+Recommended flow:
 
 ```bash
-python3.11 -m venv .venv
-. .venv/bin/activate
-python -m pip install -e '.[dev]'
-pytest
+ssh-manager init --data-root ~/ssh-manager
+ssh-manager --config ~/ssh-manager/config.json pull
+ssh-manager --config ~/ssh-manager/config.json remote list
+ssh-manager --config ~/ssh-manager/config.json remote show demo
+ssh-manager --config ~/ssh-manager/config.json select demo --endpoint public --auth home
+ssh-manager --config ~/ssh-manager/config.json validate
+ssh-manager --config ~/ssh-manager/config.json render
+ssh-manager --config ~/ssh-manager/config.json apply
+ssh-manager --config ~/ssh-manager/config.json install-include
 ```
 
-## Data Root
+Command model:
 
-`ssh-manager` resolves its data root in this order:
+- `init`: create marker, config, state, and directory skeleton
+- `pull`: sync the remote repo locally
+- `remote list/show`: inspect remote definitions and stable selectors
+- `select` / `deselect`: mutate local desired state only
+- `validate`: validate config, remote schema, state, and selector stability
+- `render`: print the desired managed SSH config without writing files
+- `apply`: validate, render, sync keys, and atomically replace the managed config
+- `local list/show`: inspect desired state versus current managed output
+- `install-include`: minimally attach the managed fragment to the main SSH config
 
-1. `SSH_MANAGER_DATA_ROOT`
-2. the nearest `SSH_MANAGER_DATA_ROOT` marker file
-3. legacy alias `SSH_CONFIG_DATA_ROOT`
-4. legacy marker `SSH_CONFIG_DATA_ROOT`
+## Ownership Boundary
 
-Canonical naming is now `SSH_MANAGER_DATA_ROOT`. Legacy names are still accepted for compatibility.
+`ssh-manager` manages:
 
-## Recommended Workflow
+- `managed_config_path`
+- `managed_keys_dir`
+- `state_path`
 
-Initialize a minimal workspace skeleton:
+`ssh-manager` does not manage:
 
-```bash
-ssh-manager init --data-root ~/ssh-manager-data
-```
+- unrelated `Host` entries in the main SSH config
+- `Match` blocks
+- other `Include` directives
+- user comments and ordering in the main SSH config
 
-This creates:
-
-- `SSH_MANAGER_DATA_ROOT` marker
-- `config.json` template
-- empty `state/state.json`
-
-Then:
-
-```bash
-ssh-manager --config ~/ssh-manager-data/config.json pull
-ssh-manager --config ~/ssh-manager-data/config.json remote list
-ssh-manager --config ~/ssh-manager-data/config.json remote show demo
-ssh-manager --config ~/ssh-manager-data/config.json select demo --endpoint public --auth home
-ssh-manager --config ~/ssh-manager-data/config.json validate
-ssh-manager --config ~/ssh-manager-data/config.json render
-ssh-manager --config ~/ssh-manager-data/config.json apply
-ssh-manager --config ~/ssh-manager-data/config.json install-include
-```
-
-`render` previews the desired managed SSH config without writing files. `apply` performs validation, key material sync, and atomic replacement of the managed config fragment.
+Only `install-include` may modify the main SSH config, and it does so by appending one minimal include block when needed.
 
 ## Manager Config
 
-Manager config lives at `<data-root>/config.json` by default.
+Manager config is formalized as a defaults-aware JSON config.
 
-Example:
+Defaults come from package resources:
+
+- `pkg://ssh_manager/config_defaults/manager.json`
+
+Load contract:
+
+1. read package defaults
+2. read file or mapping override
+3. deep-merge
+4. validate with Pydantic v2
+
+The raw config stays unresolved. Runtime path expansion is separate.
+
+Default `config.json` shape:
 
 ```json
 {
-  "ssh_key_remote_repo": "git@your.git.server:org/keys.git",
+  "ssh_key_remote_repo": "git@example.com:org/keys.git",
   "ssh_key_local_repo": "%{DATA_ROOT}/repos/keys",
   "ssh_dir": "~/.ssh",
-  "managed_config_path": "~/.ssh/managed/ssh-manager.conf",
-  "managed_keys_dir": "~/.ssh/managed/keys",
+  "managed_config_path": null,
+  "managed_keys_dir": null,
   "state_path": "%{DATA_ROOT}/state/state.json"
 }
 ```
 
-Path fields support:
+Path behavior:
 
-- `~`
-- environment variables
-- `%{DATA_ROOT}`
-- relative paths resolved from the manager config directory
+- `%{DATA_ROOT}` expands to the resolved data root
+- `~` and environment variables are expanded at runtime
+- relative paths resolve from the manager config directory
+- when `managed_config_path` is `null`, it defaults to `<ssh_dir>/managed/ssh-manager.conf`
+- when `managed_keys_dir` is `null`, it defaults to `<ssh_dir>/managed/keys`
 
-Defaults when omitted:
+## Local State
 
-- `main_config_path = <ssh_dir>/config`
-- `managed_config_path = <ssh_dir>/managed/ssh-manager.conf`
-- `managed_keys_dir = <ssh_dir>/managed/keys`
-- `state_path = <data_root>/state/state.json`
-
-## Local State Model
-
-The local state file is the desired source of truth:
+The local state file is explicit JSON:
 
 ```json
 {
@@ -116,90 +110,68 @@ The local state file is the desired source of truth:
 }
 ```
 
-Rules:
+Selector rules:
 
-- one `ServerName` maps to at most one selected entry
-- `endpoint_name` / `authentication_name` may be `null` only when the remote host still has exactly one endpoint/authentication option
-- once the remote repo grows from one option to multiple options, old `null` selectors become invalid and must be re-selected explicitly
+- one `ServerName` maps to at most one local selection entry
+- `endpoint_name` may be `null` only when the remote host still has exactly one endpoint
+- `authentication_name` may be `null` only when the remote host still has exactly one authentication option
+- stable selection is name-based; array order is not part of the contract
 
-## Ownership Boundary
+## Data Root
 
-`ssh-manager` manages:
+Data root resolution uses only the final naming:
 
-- `managed_config_path`
-- `managed_keys_dir`
-- `state_path`
-- the main SSH config only when you explicitly run `ssh-manager install-include`
+1. environment variable `SSH_MANAGER_DATA_ROOT`
+2. nearest `SSH_MANAGER_DATA_ROOT` marker file from `cwd` upward
+3. `SSH_MANAGER_DATA_ROOT` marker in `home`
 
-`ssh-manager` does not manage:
+## `init` and Package Resources
 
-- unrelated user `Host` entries
-- `Match` blocks
-- other `Include` lines
-- user comments and ordering in the main config
+`init` does not depend on repository-root example files.
 
-## Connecting the Managed Config
+It uses package resources to create:
 
-Recommended:
+- manager config defaults
+- empty state template
+
+This keeps editable installs and built distributions consistent.
+
+## `--sudo`
+
+Mutating commands support `--sudo`:
+
+- `init`
+- `pull`
+- `select`
+- `deselect`
+- `apply`
+- `install-include`
+
+Behavior:
+
+- if the target paths are writable, normal user execution works without `sudo`
+- if not, the command fails fast with a concrete path-based reason
+- when `--sudo` is given, the full command is re-execed through `sudo`
+
+## Installation
 
 ```bash
-ssh-manager install-include
+python3.11 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e '.[dev]'
+pytest
 ```
 
-Manual alternative:
+Runtime requires:
 
-```sshconfig
-Include ~/.ssh/managed/ssh-manager.conf
-```
-
-Only `install-include` may modify the main SSH config, and even then it only appends a minimal include block when needed.
-
-## Command Model
-
-Primary commands:
-
-- `init`: create marker/config/state skeleton
-- `pull`: sync the remote repo
-- `remote list/show`: inspect remote hosts and stable selectors
-- `select` / `deselect`: mutate local desired state only
-- `validate`: validate manager config, remote repo config, local state, selector stability, and warnings
-- `render`: preview the desired managed config and key plan without writing files
-- `apply`: validate, render, sync keys, and atomically replace the managed config
-- `local list/show`: inspect local state, desired output, current managed output, and `applied/pending/invalid/orphaned` status
-- `install-include`: attach the managed fragment to OpenSSH
-
-Compatibility aliases remain:
-
-- `add -> select`
-- `remove -> deselect`
-- `check -> validate`
-- `flush -> apply`
-
-These aliases are intentionally transitional. The recommended user model is now `select/render/apply`, not `add/remove/flush`.
-
-## Migration Notes
-
-### From pre-stage-two whole-main-config ownership
-
-There is still no automatic migration from older versions that rewrote the whole `~/.ssh/config`. Move the ssh-manager-managed fragment into `managed_config_path`, then install the include.
-
-### From stage-two managed-config-as-state
-
-There is no automatic import from stage-two `managed_config_path` into the new explicit local state. Recreate selections manually with `select` before using `apply`.
-
-`apply` now has a guard: if local state is empty but `managed_config_path` still contains hosts, it fails unless you explicitly pass `--allow-empty`.
+- Python 3.11+
+- system `git`
 
 ## Documentation
 
-- [`docs/architecture.md`](docs/architecture.md): layer boundaries and state/render/apply flow
-- [`docs/configuration.md`](docs/configuration.md): manager config, state schema, selector rules, and safety guards
-- [`docs/cli.md`](docs/cli.md): command matrix, compatibility aliases, and example workflows
-- [`docs/development.md`](docs/development.md): local development and test coverage
-- [`CHANGELOG.md`](CHANGELOG.md): release history
+- [`docs/architecture.md`](docs/architecture.md)
+- [`docs/configuration.md`](docs/configuration.md)
+- [`docs/cli.md`](docs/cli.md)
+- [`docs/development.md`](docs/development.md)
+- [`CHANGELOG.md`](CHANGELOG.md)
 
-## Development Notes
-
-- Source code lives under `src/ssh_manager/`
-- Tests live under `tests/`
-- Run from source with `PYTHONPATH=src python -m ssh_manager --help`
-- Package name `ssh_manager`, distribution name `ssh-manager`, and CLI name `ssh-manager` remain unchanged

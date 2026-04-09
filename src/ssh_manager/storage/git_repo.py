@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+import os
 import shutil
+import subprocess
 from pathlib import Path
-
-import git
 
 from ssh_manager.domain.errors import SSHManagerError
 
 
 def _build_git_environment(remote_repo: str) -> dict[str, str]:
     env = {
+        **os.environ,
         "GIT_TERMINAL_PROMPT": "0",
         "GIT_ASKPASS": "echo",
     }
@@ -21,36 +22,60 @@ def _build_git_environment(remote_repo: str) -> dict[str, str]:
 
 
 def clone_or_pull_repository(remote_repo: str, local_repo: Path) -> None:
+    if shutil.which("git") is None:
+        raise SSHManagerError("git is not available in PATH.")
+
     env = _build_git_environment(remote_repo)
 
-    try:
-        if local_repo.exists():
-            try:
-                repo = git.Repo(local_repo)
-            except git.exc.InvalidGitRepositoryError as exc:
-                if local_repo.is_dir() and not any(local_repo.iterdir()):
-                    shutil.rmtree(local_repo)
-                    repo = git.Repo.clone_from(remote_repo, local_repo, env=env)
-                else:
-                    raise SSHManagerError(
-                        f"Local repo path exists but is not a git repository: {local_repo}"
-                    ) from exc
-        else:
-            local_repo.parent.mkdir(parents=True, exist_ok=True)
-            repo = git.Repo.clone_from(remote_repo, local_repo, env=env)
+    if local_repo.exists():
+        if not local_repo.is_dir():
+            raise SSHManagerError(f"Local repo path exists but is not a directory: {local_repo}")
+        if not (local_repo / ".git").exists():
+            if any(local_repo.iterdir()):
+                raise SSHManagerError(
+                    f"Local repo path exists but is not a git repository: {local_repo}"
+                )
+            shutil.rmtree(local_repo)
+            _run_git(["clone", remote_repo, str(local_repo)], env=env, action="clone remote repo")
+            return
 
-        repo.git.update_environment(**env)
-
-        if not repo.remotes:
-            raise SSHManagerError(f"No remotes configured for local repo: {local_repo}")
-
-        origin = repo.remotes.origin
-        current_url = origin.url
+        current_url = _run_git(
+            ["remote", "get-url", "origin"],
+            cwd=local_repo,
+            env=env,
+            action="read git remote",
+        ).strip()
         if current_url != remote_repo:
             raise SSHManagerError(
                 f"Mismatch repo url, local path {local_repo} url={current_url}, remote url={remote_repo}"
             )
+        _run_git(
+            ["pull", "--ff-only", "origin"],
+            cwd=local_repo,
+            env=env,
+            action="pull remote repo",
+        )
+        return
 
-        origin.pull()
-    except git.exc.GitError as exc:
-        raise SSHManagerError(f"Failed to sync remote repo: {exc}") from exc
+    local_repo.parent.mkdir(parents=True, exist_ok=True)
+    _run_git(["clone", remote_repo, str(local_repo)], env=env, action="clone remote repo")
+
+
+def _run_git(
+    args: list[str],
+    *,
+    cwd: Path | None = None,
+    env: dict[str, str],
+    action: str,
+) -> str:
+    process = subprocess.run(
+        ["git", *args],
+        cwd=cwd,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    if process.returncode != 0:
+        message = process.stderr.strip() or process.stdout.strip() or "unknown git error"
+        raise SSHManagerError(f"Failed to {action}: {message}")
+    return process.stdout

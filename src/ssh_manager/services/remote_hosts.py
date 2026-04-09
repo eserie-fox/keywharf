@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
+from ssh_manager.config.resolver import ResolvedManagerConfig
 from ssh_manager.domain.errors import SSHManagerError
 from ssh_manager.domain.models import (
-    ManagerConfig,
     RemoteAuthenticationOption,
     RemoteEndpointOption,
     RemoteHostDefinition,
@@ -26,18 +26,18 @@ class _NamedRemoteOption(Protocol):
     name: str | None
 
 
-def remote_config_path(config: ManagerConfig) -> Path:
+def remote_config_path(config: ResolvedManagerConfig) -> Path:
     return config.ssh_key_local_repo / REMOTE_CONFIG_FILENAME
 
 
-def load_remote_host_list(config: ManagerConfig) -> list[RemoteHostDefinition]:
+def load_remote_host_list(config: ResolvedManagerConfig) -> list[RemoteHostDefinition]:
     return [
         RemoteHostDefinition.from_dict(item)
         for item in read_json_list(remote_config_path(config))
     ]
 
 
-def load_remote_host_map(config: ManagerConfig) -> dict[str, RemoteHostDefinition]:
+def load_remote_host_map(config: ResolvedManagerConfig) -> dict[str, RemoteHostDefinition]:
     mapping: dict[str, RemoteHostDefinition] = {}
     for host in load_remote_host_list(config):
         if not host.server_name:
@@ -57,7 +57,7 @@ def remote_host_map_to_dict(
 
 
 def validate_remote_host_definitions(
-    config: ManagerConfig,
+    config: ResolvedManagerConfig,
     remote_hosts: list[RemoteHostDefinition],
 ) -> ValidationResult:
     errors: list[str] = []
@@ -178,7 +178,7 @@ def validate_selection(
 
 
 def build_remote_host_config(
-    config: ManagerConfig,
+    config: ResolvedManagerConfig,
     remote_hosts: dict[str, RemoteHostDefinition],
     *,
     server_name: str,
@@ -199,7 +199,7 @@ def build_remote_host_config(
 
 
 def build_remote_host_config_from_selection(
-    config: ManagerConfig,
+    config: ResolvedManagerConfig,
     remote_hosts: dict[str, RemoteHostDefinition],
     selection: SelectedHostState,
 ) -> tuple[ResolvedHostSelection, SSHHostConfig]:

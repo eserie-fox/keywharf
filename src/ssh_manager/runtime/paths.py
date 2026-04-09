@@ -1,4 +1,4 @@
-"""Data-root and path-resolution helpers."""
+"""Data-root and token-expansion helpers."""
 
 from __future__ import annotations
 
@@ -7,10 +7,8 @@ from pathlib import Path
 from typing import Mapping
 
 
-PRIMARY_DATA_ROOT_ENV = "SSH_MANAGER_DATA_ROOT"
-LEGACY_DATA_ROOT_ENV = "SSH_CONFIG_DATA_ROOT"
-PRIMARY_DATA_ROOT_MARKER = "SSH_MANAGER_DATA_ROOT"
-LEGACY_DATA_ROOT_MARKER = "SSH_CONFIG_DATA_ROOT"
+DATA_ROOT_ENV = "SSH_MANAGER_DATA_ROOT"
+DATA_ROOT_MARKER = "SSH_MANAGER_DATA_ROOT"
 DATA_ROOT_TOKEN = "%{DATA_ROOT}"
 
 
@@ -35,12 +33,6 @@ def _find_marker(marker_name: str, *, cwd: Path, home: Path) -> Path | None:
     for base in _iter_search_roots(cwd, home):
         if (base / marker_name).is_file():
             return base
-    for base in _iter_search_roots(cwd, home):
-        if not base.is_dir():
-            continue
-        for child in sorted((item for item in base.iterdir() if item.is_dir()), key=lambda item: item.name):
-            if (child / marker_name).is_file():
-                return child
     return None
 
 
@@ -56,26 +48,16 @@ def resolve_data_root(
     current_dir = (cwd or Path.cwd()).resolve()
     home_dir = (home or Path.home()).resolve()
 
-    primary_env = env_map.get(PRIMARY_DATA_ROOT_ENV)
-    if primary_env:
-        return _existing_path(primary_env, label=PRIMARY_DATA_ROOT_ENV)
+    configured_env = env_map.get(DATA_ROOT_ENV)
+    if configured_env:
+        return _existing_path(configured_env, label=DATA_ROOT_ENV)
 
-    primary_marker = _find_marker(PRIMARY_DATA_ROOT_MARKER, cwd=current_dir, home=home_dir)
-    if primary_marker is not None:
-        return primary_marker
-
-    legacy_env = env_map.get(LEGACY_DATA_ROOT_ENV)
-    if legacy_env:
-        return _existing_path(legacy_env, label=LEGACY_DATA_ROOT_ENV)
-
-    legacy_marker = _find_marker(LEGACY_DATA_ROOT_MARKER, cwd=current_dir, home=home_dir)
-    if legacy_marker is not None:
-        return legacy_marker
+    marker_root = _find_marker(DATA_ROOT_MARKER, cwd=current_dir, home=home_dir)
+    if marker_root is not None:
+        return marker_root
 
     raise RuntimeError(
-        "Unable to locate data root. Set SSH_MANAGER_DATA_ROOT or create an "
-        "SSH_MANAGER_DATA_ROOT marker file. Legacy SSH_CONFIG_DATA_ROOT is still "
-        "accepted for compatibility."
+        f"Unable to locate data root. Set {DATA_ROOT_ENV} or create a {DATA_ROOT_MARKER} marker file."
     )
 
 

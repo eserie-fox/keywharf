@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from ssh_manager.config.resolver import ResolvedManagerConfig
 from ssh_manager.domain.errors import SSHManagerError
 from ssh_manager.domain.models import (
-    ManagerConfig,
     RemoteHostDefinition,
     SSHAuthentication,
     SSHEndpoint,
@@ -26,7 +26,7 @@ def get_identity_file_path(
 
 @dataclass(slots=True)
 class SSHHostConfigChoice:
-    manager_config: ManagerConfig
+    manager_config: ResolvedManagerConfig
     remote_host: RemoteHostDefinition
     endpoint_id: int = 0
     auth_id: int = 0
