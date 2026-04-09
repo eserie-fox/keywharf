@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from ssh_manager.config.merge import config_deep_merge
-from ssh_manager.config.models import ManagerConfig
+from keywharf.config.merge import config_deep_merge
+from keywharf.config.models import ManagerConfig
 from tests.support import write_json
 
 

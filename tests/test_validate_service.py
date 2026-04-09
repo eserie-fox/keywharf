@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ssh_manager.services.validate import validate_workspace
+from keywharf.services.validate import validate_workspace
 from tests.support import (
     load_config,
     make_data_root,

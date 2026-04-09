@@ -2,84 +2,78 @@
 
 ## Layers
 
-`ssh-manager` is organized into explicit layers:
+`keywharf` keeps the runtime split into explicit layers:
 
-- `commands`: Typer adapters. They parse CLI flags, format terminal/JSON output, run privilege re-exec, and translate errors into exit behavior.
-- `config`: formal manager-config schema, package defaults loading, deep merge, and runtime resolution.
-- `services`: application logic for `init`, `pull`, `select`, `deselect`, `validate`, `render`, `apply`, local views, and include installation.
-- `storage`: JSON/file I/O, git sync, manager-owned SSH file writes, include detection, and state persistence.
+- `commands`: Typer adapters only. They parse CLI options, format terminal/JSON output, run sudo re-exec, and map failures to exit codes.
+- `config`: formal manager-config schema, defaults loading, deep merge, and runtime resolution.
+- `services`: workflow orchestration for `init`, `pull`, `select`, `validate`, `render`, `apply`, include installation, local views, and remote host editing.
+- `storage`: JSON/file I/O, git sync, state persistence, managed-file writes, and remote repo config writes.
 - `ssh_config`: low-level parse/build/render logic for managed SSH host blocks.
-- `runtime`: data-root discovery and `%{DATA_ROOT}` token handling.
-- `domain`: state models, remote host models, SSH host value objects, result objects, and project-specific errors.
+- `runtime`: workspace discovery and `%{DATA_ROOT}` token handling.
+- `domain`: remote host models, local state models, SSH host value objects, result types, and project-specific errors.
 
-## Dependency Direction
-
-Preferred direction:
+Dependency direction stays one-way:
 
 - `commands` -> `services`, `config`, `domain`
 - `services` -> `storage`, `ssh_config`, `config`, `domain`
-- `storage` -> `domain`, `config`
+- `storage` -> `config`, `domain`
 - `config` -> `runtime`
 - `ssh_config` -> `domain`
-- `runtime` -> no heavier internal layer
-- `domain` -> no project-internal layer
 
-Avoid reverse dependencies. In particular:
-
-- `services` must not depend on CLI modules
-- `storage` must stay CLI-agnostic
-- `config` must not depend on services
-- package `__init__.py` files stay thin and do not pull heavy runtime dependencies
+Package `__init__.py` files stay intentionally thin and do not re-export internal implementation.
 
 ## Data Flow
 
-The steady-state workflow is:
+Steady-state workflow:
 
-1. `init` creates data-root skeleton from package resources
-2. `pull` syncs the remote repo locally
-3. `select` / `deselect` mutate `state_path`
-4. `validate` checks manager config, remote repo schema, state, and include presence
-5. `render` resolves state into desired `SSHHostConfig` objects and managed config text
-6. `apply` copies required keys, atomically replaces `managed_config_path`, then removes stale keys
-7. `install-include` explicitly connects the managed fragment to the main SSH config
+1. `init` creates a workspace skeleton from package resources
+2. `pull` clones or updates the remote repo locally
+3. `remote host ...` edits the local checkout `config.json`
+4. `select` / `deselect` mutate `state_path`
+5. `validate` checks manager config, remote repo config, state, and include presence
+6. `render` resolves state into desired `SSHHostConfig` objects and managed config text
+7. `apply` copies required keys, atomically replaces `managed_config_path`, then removes stale managed keys
+8. `install-include` explicitly wires the managed fragment into the main SSH config
 
 This keeps:
 
 - desired state separate from rendered output
-- rendered output separate from file materialization
-- main SSH config outside the normal write path
+- rendered output separate from filesystem mutation
+- the main SSH config outside normal write paths
 
 ## Ownership Boundary
 
-`ssh-manager` owns only:
+`keywharf` owns only:
 
+- `state_path`
 - `managed_config_path`
 - `managed_keys_dir`
-- `state_path`
 
-`ssh-manager` does not own the user's broader SSH config world.
+`keywharf` does not own the user's whole SSH world. Normal commands never rewrite `~/.ssh/config`; only `install-include` may append one minimal include block.
 
-Normal commands do not rewrite the main SSH config. Only `install-include` may minimally append one include block.
-
-## Formal Config
+## Formal Config And Templates
 
 Manager config follows one fixed contract:
 
 1. load package defaults from `config_defaults/manager.json`
-2. deep-merge file or mapping override
+2. deep-merge file or mapping overrides
 3. validate with Pydantic v2
 4. resolve runtime paths separately
 
-Raw config remains declarative. Runtime expansion of `~`, env vars, `%{DATA_ROOT}`, and relative paths happens only in the resolver.
+Template roles are split on purpose:
+
+- JSON package resources provide formal defaults and starter state
+- `.j2` package resources provide text scaffolding only
+
+The managed SSH config itself remains structure-driven code, not a Jinja template.
 
 ## Privilege Model
 
-Mutating commands share one privilege flow:
+Mutating commands share one privilege path:
 
-1. build canonical CLI invocation
-2. if `--sudo` is present, re-exec the full command through `sudo`
-3. otherwise run a fail-fast preflight against the concrete target paths
+1. build a canonical CLI invocation
+2. re-exec through `sudo` when `--sudo` is requested
+3. otherwise run a fail-fast preflight against concrete target paths
 4. abort early with retry guidance when privileges are insufficient
 
-This logic is centralized in `commands/_invocation.py`, `commands/_privilege.py`, and service-level privilege analyzers.
-
+This logic is centralized in `commands/_invocation.py`, `commands/_privilege.py`, and service-level analyzers.

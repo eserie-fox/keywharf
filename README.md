@@ -1,140 +1,88 @@
-# ssh-manager
+# keywharf
 
-`ssh-manager` is a Python 3.11+ CLI for managing a remote SSH host/key repository without taking over your whole `~/.ssh/config`.
+`keywharf` is a Python 3.11+ CLI for selecting remote SSH host definitions into a local desired state, then materializing only manager-owned SSH artifacts.
 
 It manages only:
 
-- one manager-owned SSH config fragment
-- one manager-owned key directory
 - one explicit local state file
+- one managed SSH config fragment
+- one managed key directory
 
-The source of truth is the local state file. The managed SSH config is an `apply` artifact, not the state source.
+It does not take over the user's whole `~/.ssh/config`. Only `install-include` may minimally append one `Include` block to the main SSH config.
 
-## Workflow
-
-Recommended flow:
+## Recommended Workflow
 
 ```bash
-ssh-manager init --data-root ~/ssh-manager
-ssh-manager --config ~/ssh-manager/config.json pull
-ssh-manager --config ~/ssh-manager/config.json remote list
-ssh-manager --config ~/ssh-manager/config.json remote show demo
-ssh-manager --config ~/ssh-manager/config.json select demo --endpoint public --auth home
-ssh-manager --config ~/ssh-manager/config.json validate
-ssh-manager --config ~/ssh-manager/config.json render
-ssh-manager --config ~/ssh-manager/config.json apply
-ssh-manager --config ~/ssh-manager/config.json install-include
+keywharf --data-root ~/keywharf init
+keywharf --data-root ~/keywharf pull
+keywharf --data-root ~/keywharf remote host list
+keywharf --data-root ~/keywharf remote host show demo
+keywharf --data-root ~/keywharf remote host add demo --hostname demo.example.com --user fox --identity-file keys/id_demo
+keywharf --data-root ~/keywharf select demo --endpoint public --auth home
+keywharf --data-root ~/keywharf validate
+keywharf --data-root ~/keywharf render
+keywharf --data-root ~/keywharf apply
+keywharf --data-root ~/keywharf install-include
 ```
 
-Command model:
-
-- `init`: create marker, config, state, and directory skeleton
-- `pull`: sync the remote repo locally
-- `remote list/show`: inspect remote definitions and stable selectors
-- `select` / `deselect`: mutate local desired state only
-- `validate`: validate config, remote schema, state, and selector stability
-- `render`: print the desired managed SSH config without writing files
-- `apply`: validate, render, sync keys, and atomically replace the managed config
-- `local list/show`: inspect desired state versus current managed output
-- `install-include`: minimally attach the managed fragment to the main SSH config
+If the manager config lives outside the default workspace root, use `--config <path>` instead of `--data-root`.
 
 ## Ownership Boundary
 
-`ssh-manager` manages:
+`keywharf` manages:
 
+- `state_path`
 - `managed_config_path`
 - `managed_keys_dir`
-- `state_path`
 
-`ssh-manager` does not manage:
+`keywharf` does not manage:
 
 - unrelated `Host` entries in the main SSH config
 - `Match` blocks
-- other `Include` directives
+- other `Include` lines
 - user comments and ordering in the main SSH config
 
-Only `install-include` may modify the main SSH config, and it does so by appending one minimal include block when needed.
+## Workspace Discovery
 
-## Manager Config
+Workspace resolution is explicit and predictable:
 
-Manager config is formalized as a defaults-aware JSON config.
+1. `--data-root`
+2. `KEYWHARF_DATA_ROOT`
+3. current directory, if it already contains both the `KEYWHARF_DATA_ROOT` marker and `config.json`
+4. nearest ancestor workspace marker
+5. `~/keywharf`
+6. fail with the checked candidate paths listed
 
-Defaults come from package resources:
+`keywharf init` creates the marker, `config.json`, `state/state.json`, directory skeleton, and small workspace text files from package resources.
 
-- `pkg://ssh_manager/config_defaults/manager.json`
+## Formal Config And Templates
 
-Load contract:
+Manager config is a formal runtime config:
 
-1. read package defaults
-2. read file or mapping override
-3. deep-merge
-4. validate with Pydantic v2
+- defaults come from `pkg://keywharf/config_defaults/manager.json`
+- file or mapping input is override only
+- defaults and overrides are deep-merged before Pydantic v2 validation
+- runtime path resolution is separate from raw config loading
 
-The raw config stays unresolved. Runtime path expansion is separate.
+Resource roles are intentionally split:
 
-Default `config.json` shape:
+- `config_defaults/*.json`: formal defaults for manager config
+- `templates/*.json`: structured starter data such as the empty state file
+- `templates/*.j2`: human-facing text templates such as workspace `README.md`, workspace `.gitignore`, and the include block text
 
-```json
-{
-  "ssh_key_remote_repo": "git@example.com:org/keys.git",
-  "ssh_key_local_repo": "%{DATA_ROOT}/repos/keys",
-  "ssh_dir": "~/.ssh",
-  "managed_config_path": null,
-  "managed_keys_dir": null,
-  "state_path": "%{DATA_ROOT}/state/state.json"
-}
-```
+## Remote Host CRUD
 
-Path behavior:
+`remote host` edits only the local checkout copy of the remote repository config:
 
-- `%{DATA_ROOT}` expands to the resolved data root
-- `~` and environment variables are expanded at runtime
-- relative paths resolve from the manager config directory
-- when `managed_config_path` is `null`, it defaults to `<ssh_dir>/managed/ssh-manager.conf`
-- when `managed_keys_dir` is `null`, it defaults to `<ssh_dir>/managed/keys`
+- `remote host list`
+- `remote host show`
+- `remote host add`
+- `remote host update`
+- `remote host remove`
 
-## Local State
+These commands do not commit, push, or mutate git metadata. They perform structured JSON reads/writes, preserve array order, and revalidate the resulting host set before writing.
 
-The local state file is explicit JSON:
-
-```json
-{
-  "version": 1,
-  "selected_hosts": [
-    {
-      "server_name": "demo",
-      "endpoint_name": "public",
-      "authentication_name": "home"
-    }
-  ]
-}
-```
-
-Selector rules:
-
-- one `ServerName` maps to at most one local selection entry
-- `endpoint_name` may be `null` only when the remote host still has exactly one endpoint
-- `authentication_name` may be `null` only when the remote host still has exactly one authentication option
-- stable selection is name-based; array order is not part of the contract
-
-## Data Root
-
-Data root resolution uses only the final naming:
-
-1. environment variable `SSH_MANAGER_DATA_ROOT`
-2. nearest `SSH_MANAGER_DATA_ROOT` marker file from `cwd` upward
-3. `SSH_MANAGER_DATA_ROOT` marker in `home`
-
-## `init` and Package Resources
-
-`init` does not depend on repository-root example files.
-
-It uses package resources to create:
-
-- manager config defaults
-- empty state template
-
-This keeps editable installs and built distributions consistent.
+This round only adds Host-level CRUD. `ExtraConfig` is preserved and rendered, but it is not exposed as a CLI editor yet.
 
 ## `--sudo`
 
@@ -146,12 +94,15 @@ Mutating commands support `--sudo`:
 - `deselect`
 - `apply`
 - `install-include`
+- `remote host add`
+- `remote host update`
+- `remote host remove`
 
-Behavior:
+Privilege handling is centralized:
 
-- if the target paths are writable, normal user execution works without `sudo`
-- if not, the command fails fast with a concrete path-based reason
-- when `--sudo` is given, the full command is re-execed through `sudo`
+- normal writable paths run without sudo
+- unwritable paths fail fast with concrete path-based reasons
+- `--sudo` re-execs the full command through `sudo`
 
 ## Installation
 
@@ -162,7 +113,7 @@ python -m pip install -e '.[dev]'
 pytest
 ```
 
-Runtime requires:
+Runtime requirements:
 
 - Python 3.11+
 - system `git`
@@ -174,4 +125,3 @@ Runtime requires:
 - [`docs/cli.md`](docs/cli.md)
 - [`docs/development.md`](docs/development.md)
 - [`CHANGELOG.md`](CHANGELOG.md)
-

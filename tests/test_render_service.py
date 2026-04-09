@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ssh_manager.services.render import render_selected_state
+from keywharf.services.render import render_selected_state
 from tests.support import (
     load_config,
     make_data_root,

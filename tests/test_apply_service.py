@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from ssh_manager.domain.errors import SSHManagerError
-from ssh_manager.services.apply import apply_selected_state
+from keywharf.domain.errors import KeywharfError
+from keywharf.services.apply import apply_selected_state
 from tests.support import (
     load_config,
     make_data_root,
@@ -69,14 +69,14 @@ def test_apply_preserves_existing_managed_config_when_key_copy_fails(tmp_path: P
     )
     write_managed_ssh_config(
         config.managed_config_path,
-        "# This file is managed by ssh_manager\n\nHost stable\n  HostName stable.example.com\n",
+        "# This file is managed by keywharf\n\nHost stable\n  HostName stable.example.com\n",
     )
     before = config.managed_config_path.read_text(encoding="utf-8")
 
     def fail_copy(*args, **kwargs):
         raise OSError("copy failed")
 
-    monkeypatch.setattr("ssh_manager.services.apply.copy_identity_file", fail_copy)
+    monkeypatch.setattr("keywharf.services.apply.copy_identity_file", fail_copy)
 
     with pytest.raises(OSError):
         apply_selected_state(config)
@@ -94,10 +94,10 @@ def test_apply_rejects_empty_state_when_managed_output_exists(tmp_path: Path) ->
     write_state_file(config.state_path, payload=state_payload())
     write_managed_ssh_config(
         config.managed_config_path,
-        "# This file is managed by ssh_manager\n\nHost legacy\n  HostName legacy.example.com\n",
+        "# This file is managed by keywharf\n\nHost legacy\n  HostName legacy.example.com\n",
     )
 
-    with pytest.raises(SSHManagerError):
+    with pytest.raises(KeywharfError):
         apply_selected_state(config)
 
 
@@ -111,7 +111,7 @@ def test_apply_allow_empty_can_clear_non_empty_managed_output(tmp_path: Path) ->
     write_state_file(config.state_path, payload=state_payload())
     write_managed_ssh_config(
         config.managed_config_path,
-        "# This file is managed by ssh_manager\n\nHost legacy\n  HostName legacy.example.com\n",
+        "# This file is managed by keywharf\n\nHost legacy\n  HostName legacy.example.com\n",
     )
 
     result = apply_selected_state(config, allow_empty=True)

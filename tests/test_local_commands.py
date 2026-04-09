@@ -5,8 +5,8 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from ssh_manager.cli import app
-from ssh_manager.services.render import render_selected_state
+from keywharf.cli import app
+from keywharf.services.render import render_selected_state
 from tests.support import (
     load_config,
     make_data_root,
@@ -89,7 +89,7 @@ def test_local_show_includes_desired_and_current_blocks(tmp_path: Path) -> None:
     )
     write_managed_ssh_config(
         config.managed_config_path,
-        "# This file is managed by ssh_manager\n\nHost demo\n  HostName example.com\n",
+        "# This file is managed by keywharf\n\nHost demo\n  HostName example.com\n",
     )
 
     result = RUNNER.invoke(app, ["--config", str(config_path), "local", "show", "demo", "--json"])

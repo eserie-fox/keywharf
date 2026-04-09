@@ -4,7 +4,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from ssh_manager.cli import app
+from keywharf.cli import app
 from tests.support import (
     load_config,
     make_data_root,

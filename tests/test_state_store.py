@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from ssh_manager.domain.errors import SSHManagerError
-from ssh_manager.domain.models import LocalState, SelectedHostState
-from ssh_manager.storage.state_store import load_state, save_state
+from keywharf.domain.errors import KeywharfError
+from keywharf.domain.models import LocalState, SelectedHostState
+from keywharf.storage.state_store import load_state, save_state
 from tests.support import load_config, make_data_root, write_manager_config, write_state_file
 
 
@@ -34,6 +34,6 @@ def test_state_store_rejects_unknown_schema_version(tmp_path: Path) -> None:
     config = load_config(config_path, data_root=data_root)
     write_state_file(config.state_path, payload={"version": 99, "selected_hosts": []})
 
-    with pytest.raises(SSHManagerError):
+    with pytest.raises(KeywharfError):
         load_state(config)
 

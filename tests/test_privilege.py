@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from ssh_manager.cli import app
-from ssh_manager.commands._invocation import CommandInvocation
-from ssh_manager.commands._privilege import raise_for_missing_privileges
-from ssh_manager.domain.errors import PermissionOperationError
-from ssh_manager.services.pull import analyze_pull_root_requirements
+from keywharf.cli import app
+from keywharf.commands._invocation import CommandInvocation
+from keywharf.commands._privilege import raise_for_missing_privileges
+from keywharf.domain.errors import PrivilegeRequiredError
+from keywharf.services.pull import analyze_pull_root_requirements
 from tests.support import make_data_root, write_manager_config
 
 
@@ -19,7 +19,7 @@ RUNNER = CliRunner()
 def test_raise_for_missing_privileges_includes_retry_hint() -> None:
     invocation = CommandInvocation(["select", "demo"])
 
-    with pytest.raises(PermissionOperationError) as exc:
+    with pytest.raises(PrivilegeRequiredError) as exc:
         raise_for_missing_privileges(
             operation="select",
             reasons=["state file path is not writable by current user: /root/state.json"],
@@ -29,7 +29,7 @@ def test_raise_for_missing_privileges_includes_retry_hint() -> None:
 
     message = str(exc.value)
     assert "select requires elevated privileges" in message
-    assert "Retry with: ssh-manager select demo --sudo" in message
+    assert "Retry with: keywharf select demo --sudo" in message
 
 
 def test_select_with_sudo_reexecs_full_command(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -43,9 +43,9 @@ def test_select_with_sudo_reexecs_full_command(monkeypatch: pytest.MonkeyPatch) 
         captured["args"] = args
         raise ReexecCalled("reexec")
 
-    monkeypatch.setattr("ssh_manager.commands._privilege.current_user_is_root", lambda: False)
-    monkeypatch.setattr("ssh_manager.commands._privilege.shutil.which", lambda name: "/usr/bin/sudo")
-    monkeypatch.setattr("ssh_manager.commands._privilege.os.execvp", fake_execvp)
+    monkeypatch.setattr("keywharf.commands._privilege.current_user_is_root", lambda: False)
+    monkeypatch.setattr("keywharf.commands._privilege.shutil.which", lambda name: "/usr/bin/sudo")
+    monkeypatch.setattr("keywharf.commands._privilege.os.execvp", fake_execvp)
 
     result = RUNNER.invoke(app, ["select", "demo", "--sudo"])
 
@@ -62,8 +62,8 @@ def test_pull_analyzer_reports_unwritable_repo_parent(tmp_path: Path, monkeypatc
     from tests.support import load_config
 
     config = load_config(config_path, data_root=data_root)
-    monkeypatch.setattr("ssh_manager.services.pull.can_write_directory", lambda path: False)
-    monkeypatch.setattr("ssh_manager.services.pull.root_owned_hint", lambda path: "")
+    monkeypatch.setattr("keywharf.services.pull.can_write_directory", lambda path: False)
+    monkeypatch.setattr("keywharf.services.pull.root_owned_hint", lambda path: "")
 
     reasons = analyze_pull_root_requirements(config)
 

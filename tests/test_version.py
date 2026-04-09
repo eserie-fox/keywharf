@@ -3,8 +3,8 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from ssh_manager import __version__
-from ssh_manager.version import __version__ as module_version
+from keywharf.version import __version__ as module_version
+import keywharf
 
 
 def test_version_is_single_sourced_from_version_module() -> None:
@@ -12,6 +12,6 @@ def test_version_is_single_sourced_from_version_module() -> None:
 
     assert pyproject["project"]["dynamic"] == ["version"]
     assert "version" not in pyproject["project"]
-    assert pyproject["tool"]["setuptools"]["dynamic"]["version"]["attr"] == "ssh_manager.version.__version__"
-    assert __version__ == module_version
-
+    assert pyproject["tool"]["setuptools"]["dynamic"]["version"]["attr"] == "keywharf.version.__version__"
+    assert not hasattr(keywharf, "__version__")
+    assert module_version

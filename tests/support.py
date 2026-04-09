@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ssh_manager.config.loader import load_resolved_manager_config
+from keywharf.config.loader import load_resolved_manager_config
 
 
 def write_json(path: Path, payload: Any) -> Path:
@@ -17,7 +17,7 @@ def read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def make_data_root(base: Path, *, marker_name: str = "SSH_MANAGER_DATA_ROOT") -> Path:
+def make_data_root(base: Path, *, marker_name: str = "KEYWHARF_DATA_ROOT") -> Path:
     data_root = base / "data-root"
     data_root.mkdir(parents=True, exist_ok=True)
     (data_root / marker_name).write_text("", encoding="utf-8")
@@ -150,7 +150,10 @@ def remote_repo_payload(
 
 def write_remote_repo_config(repo_root: Path, payload: list[dict[str, Any]] | None = None) -> Path:
     repo_root.mkdir(parents=True, exist_ok=True)
-    return write_json(repo_root / "config.json", payload or remote_repo_payload())
+    return write_json(
+        repo_root / "config.json",
+        remote_repo_payload() if payload is None else payload,
+    )
 
 
 def write_identity_file(

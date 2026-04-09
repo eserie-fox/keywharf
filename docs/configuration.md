@@ -1,23 +1,32 @@
 # Configuration
 
-## Data Root Resolution
+## Workspace Discovery
 
-The final project uses one canonical data-root name only:
+`keywharf` uses one canonical workspace name only:
 
-- environment variable: `SSH_MANAGER_DATA_ROOT`
-- marker file: `SSH_MANAGER_DATA_ROOT`
+- environment variable: `KEYWHARF_DATA_ROOT`
+- marker file: `KEYWHARF_DATA_ROOT`
 
-Resolution order:
+Discovery order:
 
-1. `SSH_MANAGER_DATA_ROOT`
-2. nearest `SSH_MANAGER_DATA_ROOT` marker from `cwd` upward
-3. `SSH_MANAGER_DATA_ROOT` marker in `home`
+1. explicit `--data-root`
+2. `KEYWHARF_DATA_ROOT`
+3. current directory, if it already contains both the marker and `config.json`
+4. nearest ancestor directory with a usable marker/config pair
+5. fixed home candidate `~/keywharf`
+6. fail with a message listing the attempted candidates
+
+The discovery path is strict on purpose:
+
+- no recursive home scanning
+- no fuzzy directory guessing
+- no alias env vars or alias markers
 
 ## Formal Manager Config
 
-Manager config is a Pydantic v2 model loaded with a fixed pipeline:
+Manager config is a Pydantic v2 model loaded with one fixed pipeline:
 
-1. read defaults from `pkg://ssh_manager/config_defaults/manager.json`
+1. read defaults from `pkg://keywharf/config_defaults/manager.json`
 2. read one file or mapping override
 3. deep-merge
 4. `model_validate`
@@ -59,27 +68,24 @@ Defaults resource:
 }
 ```
 
-`managed_config_path` and `managed_keys_dir` default in the resolver, not in field defaults:
+Resolver-derived defaults:
 
-- `managed_config_path -> <ssh_dir>/managed/ssh-manager.conf`
+- `managed_config_path -> <ssh_dir>/managed/keywharf.conf`
 - `managed_keys_dir -> <ssh_dir>/managed/keys`
+- `main_config_path -> <ssh_dir>/config`
 
 ## Runtime Resolution
 
 Raw config is not resolved during load/merge/validate.
 
-Runtime resolution happens in `resolve_manager_config(...)` and produces absolute paths.
+Runtime resolution happens in `resolve_manager_config(...)`:
 
-Resolution rules:
-
-- `%{DATA_ROOT}` expands to resolved data root
+- `%{DATA_ROOT}` expands to the resolved workspace root
 - `~` expands to home
 - environment variables expand
 - relative paths resolve from the manager config directory
 
-`main_config_path` is derived only at runtime:
-
-- `<ssh_dir>/config`
+If both `--data-root` and an absolute `--config` path are supplied, the absolute config must live under the chosen data root.
 
 ## State File
 
@@ -107,17 +113,26 @@ Rules:
 - `endpoint_name` may be `null` only for a singleton endpoint set
 - `authentication_name` may be `null` only for a singleton authentication set
 
-## Remote Repo Constraints
+## Remote Repo Config
 
-Remote repo still uses `config.json` in the repo root.
+The local checkout still uses `config.json` in the repo root.
 
-Validation rules enforced by `validate`:
+Validation rules:
 
 - `ServerName` must be present and unique
-- if a host has multiple endpoint options, every endpoint needs a unique `EndPointName`
-- if a host has multiple authentication options, every authentication needs a unique `AuthenticationName`
+- if a host has multiple endpoints, each endpoint needs a unique `EndPointName`
+- if a host has multiple authentication options, each authentication needs a unique `AuthenticationName`
 - referenced identity files must exist in the local repo checkout
 - state selectors must resolve uniquely against the current remote repo
+
+`remote host add/update/remove` edit only this local checkout file. They do not commit or push.
+
+Current edit boundary:
+
+- Host-level CRUD only
+- one new host is created with one endpoint and one authentication entry
+- `ExtraConfig` is preserved but not exposed as CLI CRUD yet
+- when a host has multiple endpoint/auth options, `remote host update` requires `--target-endpoint` / `--target-auth`
 
 ## Managed Output
 
@@ -141,29 +156,18 @@ Safety rule:
 - if state is empty while `managed_config_path` still contains hosts, `apply` fails by default
 - `--allow-empty` is required to intentionally clear it
 
-## Include Installation
+## Package Resources And Templates
 
-`install-include` is the only command that may modify the main SSH config.
+Package resources are split by role:
 
-Behavior:
+- `config_defaults/*.json`: formal defaults
+- `templates/*.json`: structured starter data
+- `templates/*.j2`: text scaffolding
 
-- target is `<ssh_dir>/config`
-- exact include match or glob coverage counts as already installed
-- if absent, append one minimal include block
-- `--dry-run` previews without writing
+Current `.j2` usage includes:
 
-## Ownership Summary
+- workspace `README.md`
+- workspace `.gitignore`
+- include block text
 
-Managed by `ssh-manager`:
-
-- `managed_config_path`
-- `managed_keys_dir`
-- `state_path`
-
-Not managed by `ssh-manager`:
-
-- unrelated user `Host` blocks
-- `Match` blocks
-- other `Include` lines
-- comments and order in the main SSH config
-
+Manager config and state files remain structured JSON writes, not template-rendered text.

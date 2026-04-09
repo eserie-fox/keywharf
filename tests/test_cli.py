@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typer.testing import CliRunner
 
-from ssh_manager.cli import app
-from ssh_manager.version import __version__
+from keywharf.cli import app
+from keywharf.version import __version__
 
 
 RUNNER = CliRunner()
@@ -13,6 +13,7 @@ def test_root_help_shows_final_command_set() -> None:
     result = RUNNER.invoke(app, [])
 
     assert result.exit_code == 0
+    assert "--data-root" in result.output
     assert "init" in result.output
     assert "pull" in result.output
     assert "validate" in result.output
@@ -52,7 +53,5 @@ def test_remote_group_without_subcommand_shows_help() -> None:
     result = RUNNER.invoke(app, ["remote"])
 
     assert result.exit_code == 0
-    assert "stable selectors" in result.output
-    assert "list" in result.output
-    assert "show" in result.output
-
+    assert "local checkout of the remote host repository" in result.output
+    assert "host" in result.output

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ssh_manager.services.install_include import detect_include, install_managed_include
-from ssh_manager.storage.managed_files import include_line_for_config
+from keywharf.services.install_include import detect_include, install_managed_include
+from keywharf.storage.managed_files import include_line_for_config
 from tests.support import load_config, make_data_root, write_local_ssh_config, write_manager_config
 
 
