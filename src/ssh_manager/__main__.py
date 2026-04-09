@@ -1,8 +1,8 @@
-from ssh_manager.cli import app
+from ssh_manager.cli import main as cli_main
 
 
 def main() -> None:
-    app()
+    cli_main()
 
 
 if __name__ == "__main__":

@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ssh-manager"
-version = "1.0.1"
+dynamic = ["version"]
 description = "Manage local SSH config alongside a remote key repository."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 authors = [{ name = "ssh-manager" }]
 license = { text = "MIT" }
 keywords = ["ssh", "automation", "cli", "configuration"]
@@ -35,11 +35,19 @@ dev = [
 ]
 
 [project.scripts]
-ssh-manager = "ssh_manager.__main__:main"
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["ssh_manager*"]
+ssh-manager = "ssh_manager.cli:main"
 
 [tool.setuptools]
+package-dir = {"" = "src"}
 license-files = ["LICENSE"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["ssh_manager*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "ssh_manager.version.__version__"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

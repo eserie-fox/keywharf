@@ -1,65 +1,110 @@
-ssh-manager
-===========
+# ssh-manager
 
-Manage local SSH configs in sync with a remote key repository. The CLI can pull a repo of key material and host definitions, generate Host blocks, and write them to ``~/.ssh/config`` with backups.
+`ssh-manager` is a Python 3.11+ CLI for managing a local `~/.ssh/config` from a remote SSH key/config repository. It keeps the existing command model in place for this phase: `pull`, `local`, `remote`, `add`, `remove`, `flush`, and `check`.
 
-Features
---------
-- Pull a remote SSH key/config repo and validate identity files.
-- Generate Host blocks from repo entries and append or flush to your SSH config.
-- Inspect local and remote configs with rich tables or JSON output for scripting.
-- Resolve data root via ``SSH_MANAGER_DATA_ROOT`` or a ``SSH_CONFIG_DATA_ROOT`` marker file.
+This repository has been refactored into a standard `src/` layout with explicit `commands`, `services`, `domain`, `storage`, `ssh_config`, and `runtime` layers. This phase is a foundation cleanup only. It does not introduce managed include files or redesign the command semantics.
 
-Installation
-------------
+## Highlights
+
+- Standard `src/ssh_manager/` package layout.
+- Thin CLI adapter layer built on Typer.
+- Service-layer orchestration for `pull`, `add/remove`, `flush`, and `check`.
+- Explicit runtime config and data-root resolution.
+- Pure validation for `check`: it no longer rewrites remote `config.json`.
+
+## Installation
+
+Install from a local checkout:
+
+```bash
+python3.11 -m venv .venv
+. .venv/bin/activate
+python -m pip install .
+ssh-manager --help
 ```
-pip install .
+
+For development:
+
+```bash
+python3.11 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e '.[dev]'
+pytest
 ```
 
-Preparing the data root
------------------------
-``ssh-manager`` looks for configuration under a data root. It resolves in this order:
-1. The ``SSH_MANAGER_DATA_ROOT`` environment variable (recommended for deployments).
-2. The first directory (working directory, its parents, or your home) containing a ``SSH_CONFIG_DATA_ROOT`` file, or any direct child containing that marker.
+## Data Root
 
-Create the marker in your chosen directory:
-```
+`ssh-manager` resolves its data root in this order:
+
+1. `SSH_MANAGER_DATA_ROOT`
+2. the nearest `SSH_MANAGER_DATA_ROOT` marker file found in the working directory, its parents, or a direct child of those directories
+3. legacy alias `SSH_CONFIG_DATA_ROOT`
+4. legacy marker `SSH_CONFIG_DATA_ROOT`
+
+Create a data root with the current marker:
+
+```bash
 mkdir -p ~/ssh-manager-data
-touch ~/ssh-manager-data/SSH_CONFIG_DATA_ROOT
+touch ~/ssh-manager-data/SSH_MANAGER_DATA_ROOT
 ```
-Place your ``config.json`` inside that directory (or set ``SSH_MANAGER_DATA_ROOT`` to point to it).
 
-Configuration
--------------
-1. Create a manager config based on [config_example/ssh_manager_example_config.json](config_example/ssh_manager_example_config.json):
-```
+Legacy `SSH_CONFIG_DATA_ROOT` naming is still accepted for compatibility, but documentation and error messages now use `SSH_MANAGER_DATA_ROOT` as the canonical name.
+
+## Manager Config
+
+Place `config.json` under the resolved data root, or pass `--config`.
+
+Example:
+
+```json
 {
-	"ssh_key_remote_repo": "git@your.git.server:org/keys.git",
-	"ssh_key_local_repo": "./repos/keys",
-	"ssh_dir": "~/.ssh"
+  "ssh_key_remote_repo": "git@your.git.server:org/keys.git",
+  "ssh_key_local_repo": "%{DATA_ROOT}/repos/keys",
+  "ssh_dir": "~/.ssh"
 }
 ```
-2. Ensure your key repo contains a ``config.json`` shaped like [config_example/ssh_key_repo_example_config.json](config_example/ssh_key_repo_example_config.json).
 
-Core commands
--------------
-- Initialize/sync remote repo: ``ssh-manager pull``
-- List local hosts: ``ssh-manager local list`` (``--pattern`` to filter, ``--json`` for scripting)
-- List remote configs: ``ssh-manager remote list``
-- Show a remote config: ``ssh-manager remote show <name>``
-- Add a host from remote: ``ssh-manager add <name> [--endpoint-id N] [--auth-id N]``
-- Remove a host: ``ssh-manager remove <name|index>``
-- Rewrite ssh config from in-memory state: ``ssh-manager flush``
-- Validate remote repo config: ``ssh-manager check``
+Path fields support:
 
-Notes
------
-- Host blocks are written with a timestamped backup of the existing SSH config by default.
-- Identity files are copied into ``<ssh_dir>/<host>/`` with user-only permissions.
-- Use ``--dry-run`` on mutating commands to preview changes without writing.
+- `~`
+- environment variables such as `$HOME`
+- `%{DATA_ROOT}`
+- relative paths, resolved from the manager config file directory
 
-Development
------------
-- Install dev extras: ``pip install .[dev]``
-- Run static checks (if you enable them): ``ruff check`` / ``mypy``
-- Run tests (if added): ``pytest``
+The remote key repo still expects a `config.json` shaped like [`config_example/ssh_key_repo_example_config.json`](config_example/ssh_key_repo_example_config.json).
+
+## Commands
+
+- `ssh-manager pull`: clone or sync the remote repo into the configured local repo path
+- `ssh-manager local list`: inspect local `~/.ssh/config` host blocks
+- `ssh-manager remote list`: inspect remote host definitions
+- `ssh-manager remote show <name>`: inspect one remote host definition
+- `ssh-manager add <name>`: generate and add a host block locally
+- `ssh-manager remove <name|index>`: remove a local host block and its copied identity file
+- `ssh-manager flush`: rewrite the local SSH config from the current parsed host set
+- `ssh-manager check`: validate the remote repo config without modifying files
+
+Mutating commands still rewrite a single SSH config file and keep timestamped backups where applicable. This phase intentionally does not add include-file management.
+
+## `check` Behavior
+
+`check` is now validation-only:
+
+- it loads the remote repo `config.json`
+- it verifies required server names
+- it verifies referenced `IdentityFile` paths exist inside the local repo checkout
+- it does not sort, rewrite, or back up `config.json`
+
+## Documentation
+
+- [`docs/architecture.md`](docs/architecture.md): codebase layers and dependency direction
+- [`docs/configuration.md`](docs/configuration.md): manager config, remote repo config, and data-root resolution
+- [`docs/development.md`](docs/development.md): local setup, tests, packaging, and repository hygiene
+- [`CHANGELOG.md`](CHANGELOG.md): release history
+
+## Development Notes
+
+- Source code lives under `src/ssh_manager/`
+- Tests live under `tests/`
+- Run the CLI from source with `PYTHONPATH=src python -m ssh_manager --help`
+- This phase keeps package name `ssh_manager`, distribution name `ssh-manager`, and CLI name `ssh-manager` unchanged

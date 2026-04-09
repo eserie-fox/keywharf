@@ -1,3 +1,5 @@
+"""Optional runtime logging helpers."""
+
 from __future__ import annotations
 
 import logging
@@ -5,7 +7,8 @@ import sys
 import threading
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable
+
 
 DEFAULT_LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 DEFAULT_RETENTION_DAYS = 7
@@ -20,12 +23,7 @@ def _now() -> datetime:
 
 
 class DailySymlinkFileHandler(logging.Handler):
-    """File handler that rolls to a new dated file automatically at midnight.
-
-    The handler writes to ``<stem>-YYYY-MM-DD.log`` inside the directory containing
-    ``symlink_path``. Each rollover updates ``symlink_path`` to point at the newest
-    daily file and prunes files older than ``retention_days``.
-    """
+    """Roll log files daily and refresh a symlink to the newest file."""
 
     def __init__(
         self,
@@ -44,8 +42,8 @@ class DailySymlinkFileHandler(logging.Handler):
         self.retention_days = max(1, retention_days)
         self.encoding = encoding
         self._lock = threading.RLock()
-        self._file_handler: Optional[logging.FileHandler] = None
-        self._current_date: Optional[str] = None
+        self._file_handler: logging.FileHandler | None = None
+        self._current_date: str | None = None
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self._rotate_if_needed()
 
@@ -55,34 +53,36 @@ class DailySymlinkFileHandler(logging.Handler):
             return None
         return Path(self._file_handler.baseFilename)
 
-    def setFormatter(self, fmt: logging.Formatter) -> None:  # noqa: D401
+    def setFormatter(self, fmt: logging.Formatter) -> None:  # noqa: N802
         super().setFormatter(fmt)
-        if self._file_handler:
+        if self._file_handler is not None:
             self._file_handler.setFormatter(fmt)
 
-    def emit(self, record: logging.LogRecord) -> None:  # noqa: D401
+    def emit(self, record: logging.LogRecord) -> None:
         with self._lock:
             self._rotate_if_needed()
-            if not self._file_handler:
+            if self._file_handler is None:
                 return
             self._file_handler.emit(record)
 
-    def close(self) -> None:  # noqa: D401
+    def close(self) -> None:
         with self._lock:
-            if self._file_handler:
+            if self._file_handler is not None:
                 self._file_handler.close()
                 self._file_handler = None
         super().close()
 
     def _rotate_if_needed(self) -> None:
         today_label = _now().strftime("%Y-%m-%d")
-        if self._current_date == today_label and self._file_handler:
+        if self._current_date == today_label and self._file_handler is not None:
             return
-        if self._file_handler:
+
+        if self._file_handler is not None:
             self._file_handler.close()
+
         daily_file = self.log_dir / f"{self.stem}-{today_label}.log"
         self._file_handler = logging.FileHandler(daily_file, encoding=self.encoding)
-        if self.formatter:
+        if self.formatter is not None:
             self._file_handler.setFormatter(self.formatter)
         self._current_date = today_label
         _cleanup_old_logs(self.log_dir, self.stem, self.retention_days, daily_file)
@@ -97,12 +97,7 @@ def configure_daily_file_logger(
     retention_days: int = DEFAULT_RETENTION_DAYS,
     stream_to_stdout: bool = True,
 ) -> Path | None:
-    """Configure logging with an optional daily file target and stdout streaming.
-
-    If ``log_path`` is provided, a ``DailySymlinkFileHandler`` is installed to ensure
-    the process automatically switches to a new dated file at midnight without
-    restarting. Files older than ``retention_days`` are deleted after each rollover.
-    """
+    """Configure logging with optional daily file output."""
 
     handlers: list[logging.Handler] = []
     daily_file: Path | None = None
@@ -149,15 +144,15 @@ def _update_symlink(link_path: Path, newest_log: Path) -> None:
         if link_path.exists() or link_path.is_symlink():
             link_path.unlink()
         link_path.symlink_to(newest_log)
-    except OSError as exc:  # pragma: no cover - filesystem edge cases
+    except OSError as exc:  # pragma: no cover
         _logger.warning(
             "Failed to update log symlink %s -> %s: %s", link_path, newest_log, exc
         )
 
 
 __all__ = [
-    "configure_daily_file_logger",
     "DEFAULT_LOG_FORMAT",
     "DEFAULT_RETENTION_DAYS",
     "DailySymlinkFileHandler",
+    "configure_daily_file_logger",
 ]
