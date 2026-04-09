@@ -3,12 +3,12 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ssh-manager"
-version = "1.0.1"
+name = "keywharf"
+dynamic = ["version"]
 description = "Manage local SSH config alongside a remote key repository."
 readme = "README.md"
-requires-python = ">=3.8"
-authors = [{ name = "ssh-manager" }]
+requires-python = ">=3.11"
+authors = [{ name = "keywharf" }]
 license = { text = "MIT" }
 keywords = ["ssh", "automation", "cli", "configuration"]
 classifiers = [
@@ -22,7 +22,8 @@ classifiers = [
     "Topic :: System :: Systems Administration",
 ]
 dependencies = [
-    "gitpython>=3.1",
+    "jinja2>=3.1,<4",
+    "pydantic>=2.7,<3",
     "rich>=13",
     "typer>=0.12",
 ]
@@ -35,11 +36,22 @@ dev = [
 ]
 
 [project.scripts]
-ssh-manager = "ssh_manager.__main__:main"
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["ssh_manager*"]
+keywharf = "keywharf.cli:main"
 
 [tool.setuptools]
+package-dir = {"" = "src"}
 license-files = ["LICENSE"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["keywharf*"]
+
+[tool.setuptools.package-data]
+keywharf = ["config_defaults/**/*.json", "templates/**/*.json", "templates/**/*.j2"]
+
+[tool.setuptools.dynamic]
+version = {attr = "keywharf.version.__version__"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

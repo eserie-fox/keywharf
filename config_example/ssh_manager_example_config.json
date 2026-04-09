@@ -1,6 +1,0 @@
-{
-  "ssh_key_remote_repo": "git@gitxxx.com:yyy/zzz.git", 
-  "ssh_key_local_repo": "/path/to/repo_dir",
-  "ssh_dir": "~/.ssh/"
-}
-

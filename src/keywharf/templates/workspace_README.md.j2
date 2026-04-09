@@ -1,0 +1,21 @@
+# keywharf workspace
+
+This directory is a `keywharf` workspace.
+
+- marker: `{{ marker_name }}`
+- config: `{{ config_path }}`
+- state: `{{ state_path }}`
+- managed config: `{{ managed_config_path }}`
+- managed keys: `{{ managed_keys_dir }}`
+
+Typical flow:
+
+```bash
+keywharf --data-root {{ data_root }} pull
+keywharf --data-root {{ data_root }} remote host list
+keywharf --data-root {{ data_root }} select <server>
+keywharf --data-root {{ data_root }} validate
+keywharf --data-root {{ data_root }} render
+keywharf --data-root {{ data_root }} apply
+keywharf --data-root {{ data_root }} install-include
+```

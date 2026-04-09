@@ -166,3 +166,7 @@ cython_debug/
 
 # Configuration
 config.json
+
+.agents
+.codex
+skills-lock.json

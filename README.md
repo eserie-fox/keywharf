@@ -1,65 +1,127 @@
-ssh-manager
-===========
+# keywharf
 
-Manage local SSH configs in sync with a remote key repository. The CLI can pull a repo of key material and host definitions, generate Host blocks, and write them to ``~/.ssh/config`` with backups.
+`keywharf` is a Python 3.11+ CLI for selecting remote SSH host definitions into a local desired state, then materializing only manager-owned SSH artifacts.
 
-Features
---------
-- Pull a remote SSH key/config repo and validate identity files.
-- Generate Host blocks from repo entries and append or flush to your SSH config.
-- Inspect local and remote configs with rich tables or JSON output for scripting.
-- Resolve data root via ``SSH_MANAGER_DATA_ROOT`` or a ``SSH_CONFIG_DATA_ROOT`` marker file.
+It manages only:
 
-Installation
-------------
+- one explicit local state file
+- one managed SSH config fragment
+- one managed key directory
+
+It does not take over the user's whole `~/.ssh/config`. Only `install-include` may minimally append one `Include` block to the main SSH config.
+
+## Recommended Workflow
+
+```bash
+keywharf --data-root ~/keywharf init
+keywharf --data-root ~/keywharf pull
+keywharf --data-root ~/keywharf remote host list
+keywharf --data-root ~/keywharf remote host show demo
+keywharf --data-root ~/keywharf remote host add demo --hostname demo.example.com --user fox --identity-file keys/id_demo
+keywharf --data-root ~/keywharf select demo --endpoint public --auth home
+keywharf --data-root ~/keywharf validate
+keywharf --data-root ~/keywharf render
+keywharf --data-root ~/keywharf apply
+keywharf --data-root ~/keywharf install-include
 ```
-pip install .
+
+If the manager config lives outside the default workspace root, use `--config <path>` instead of `--data-root`.
+
+## Ownership Boundary
+
+`keywharf` manages:
+
+- `state_path`
+- `managed_config_path`
+- `managed_keys_dir`
+
+`keywharf` does not manage:
+
+- unrelated `Host` entries in the main SSH config
+- `Match` blocks
+- other `Include` lines
+- user comments and ordering in the main SSH config
+
+## Workspace Discovery
+
+Workspace resolution is explicit and predictable:
+
+1. `--data-root`
+2. `KEYWHARF_DATA_ROOT`
+3. current directory, if it already contains both the `KEYWHARF_DATA_ROOT` marker and `config.json`
+4. nearest ancestor workspace marker
+5. `~/keywharf`
+6. fail with the checked candidate paths listed
+
+`keywharf init` creates the marker, `config.json`, `state/state.json`, directory skeleton, and small workspace text files from package resources.
+
+## Formal Config And Templates
+
+Manager config is a formal runtime config:
+
+- defaults come from `pkg://keywharf/config_defaults/manager.json`
+- file or mapping input is override only
+- defaults and overrides are deep-merged before Pydantic v2 validation
+- runtime path resolution is separate from raw config loading
+
+Resource roles are intentionally split:
+
+- `config_defaults/*.json`: formal defaults for manager config
+- `templates/*.json`: structured starter data such as the empty state file
+- `templates/*.j2`: human-facing text templates such as workspace `README.md`, workspace `.gitignore`, and the include block text
+
+## Remote Host CRUD
+
+`remote host` edits only the local checkout copy of the remote repository config:
+
+- `remote host list`
+- `remote host show`
+- `remote host add`
+- `remote host update`
+- `remote host remove`
+
+These commands do not commit, push, or mutate git metadata. They perform structured JSON reads/writes, preserve array order, and revalidate the resulting host set before writing.
+
+This round only adds Host-level CRUD. `ExtraConfig` is preserved and rendered, but it is not exposed as a CLI editor yet.
+
+## `--sudo`
+
+Mutating commands support `--sudo`:
+
+- `init`
+- `pull`
+- `select`
+- `deselect`
+- `apply`
+- `install-include`
+- `remote host add`
+- `remote host update`
+- `remote host remove`
+
+Privilege handling is centralized:
+
+- normal writable paths run without sudo
+- unwritable paths fail fast with concrete path-based reasons
+- `--sudo` re-execs the full command through `sudo`
+
+## Installation
+
+```bash
+python3.11 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e '.[dev]'
+pytest
 ```
 
-Preparing the data root
------------------------
-``ssh-manager`` looks for configuration under a data root. It resolves in this order:
-1. The ``SSH_MANAGER_DATA_ROOT`` environment variable (recommended for deployments).
-2. The first directory (working directory, its parents, or your home) containing a ``SSH_CONFIG_DATA_ROOT`` file, or any direct child containing that marker.
+Runtime requirements:
 
-Create the marker in your chosen directory:
-```
-mkdir -p ~/ssh-manager-data
-touch ~/ssh-manager-data/SSH_CONFIG_DATA_ROOT
-```
-Place your ``config.json`` inside that directory (or set ``SSH_MANAGER_DATA_ROOT`` to point to it).
+- Python 3.11+
+- system `git`
 
-Configuration
--------------
-1. Create a manager config based on [config_example/ssh_manager_example_config.json](config_example/ssh_manager_example_config.json):
-```
-{
-	"ssh_key_remote_repo": "git@your.git.server:org/keys.git",
-	"ssh_key_local_repo": "./repos/keys",
-	"ssh_dir": "~/.ssh"
-}
-```
-2. Ensure your key repo contains a ``config.json`` shaped like [config_example/ssh_key_repo_example_config.json](config_example/ssh_key_repo_example_config.json).
+## Documentation
 
-Core commands
--------------
-- Initialize/sync remote repo: ``ssh-manager pull``
-- List local hosts: ``ssh-manager local list`` (``--pattern`` to filter, ``--json`` for scripting)
-- List remote configs: ``ssh-manager remote list``
-- Show a remote config: ``ssh-manager remote show <name>``
-- Add a host from remote: ``ssh-manager add <name> [--endpoint-id N] [--auth-id N]``
-- Remove a host: ``ssh-manager remove <name|index>``
-- Rewrite ssh config from in-memory state: ``ssh-manager flush``
-- Validate remote repo config: ``ssh-manager check``
-
-Notes
------
-- Host blocks are written with a timestamped backup of the existing SSH config by default.
-- Identity files are copied into ``<ssh_dir>/<host>/`` with user-only permissions.
-- Use ``--dry-run`` on mutating commands to preview changes without writing.
-
-Development
------------
-- Install dev extras: ``pip install .[dev]``
-- Run static checks (if you enable them): ``ruff check`` / ``mypy``
-- Run tests (if added): ``pytest``
+- [`docs/architecture.md`](docs/architecture.md)
+- [`docs/configuration.md`](docs/configuration.md)
+- [`docs/cli.md`](docs/cli.md)
+- [`docs/development.md`](docs/development.md)
+- [`CHANGELOG.md`](CHANGELOG.md)
