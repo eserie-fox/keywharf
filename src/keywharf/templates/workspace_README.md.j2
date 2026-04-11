@@ -32,11 +32,15 @@ keywharf --workspace {{ workspace_root }} repo host auth add <server> <auth_name
 After your host repo has content:
 
 ```bash
-keywharf --workspace {{ workspace_root }} select <server> --endpoint <endpoint_name> --auth <auth_name>
+keywharf --workspace {{ workspace_root }} select <server>
+# or pass stable names explicitly:
+# keywharf --workspace {{ workspace_root }} select <server> --endpoint <endpoint_name> --auth <auth_name>
 keywharf --workspace {{ workspace_root }} validate
 keywharf --workspace {{ workspace_root }} render
 keywharf --workspace {{ workspace_root }} apply
 keywharf --workspace {{ workspace_root }} install-include
 ```
+
+`select` still accepts explicit `--endpoint` and `--auth` stable names. If one side has a single candidate, it is selected automatically. If one side has multiple candidates, `select` prompts in an interactive terminal and fails fast in noninteractive environments until you pass the stable name explicitly.
 
 Hosts may exist as shells before they are usable. `validate` reports every host that is still missing endpoint options, authentication options, or both. `render` and `apply` only require selected hosts to be complete.

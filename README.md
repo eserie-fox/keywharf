@@ -41,12 +41,16 @@ keywharf --workspace ~/demo repo host auth add demo home --user fox --identity-f
 Then continue with normal selection and apply flow:
 
 ```bash
-keywharf --workspace ~/demo select demo --endpoint public --auth home
+keywharf --workspace ~/demo select demo
+# or select explicitly by stable name:
+# keywharf --workspace ~/demo select demo --endpoint public --auth home
 keywharf --workspace ~/demo validate
 keywharf --workspace ~/demo render
 keywharf --workspace ~/demo apply
 keywharf --workspace ~/demo install-include
 ```
+
+`select` still accepts explicit `--endpoint` and `--auth` stable names. If one side has a single candidate, it is selected automatically. If one side has multiple candidates, `select` prompts in an interactive terminal and fails fast in noninteractive environments until you pass the stable name explicitly.
 
 If the manager config lives outside the default workspace root, use `--config <path>` instead of `--workspace`.
 

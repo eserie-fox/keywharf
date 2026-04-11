@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
+import subprocess
+import sys
+
 from typer.testing import CliRunner
 
 from keywharf.cli import app
@@ -91,3 +96,42 @@ def test_init_without_required_workspace_name_reports_missing_argument() -> None
 
     assert result.exit_code != 0
     assert "Missing argument" in result.output
+
+
+def test_main_exits_cleanly_for_keywharf_errors(tmp_path: Path) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir(parents=True)
+
+    env = os.environ.copy()
+    pythonpath = str(repo_root / "src")
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = (
+        f"{pythonpath}:{existing_pythonpath}"
+        if existing_pythonpath
+        else pythonpath
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "keywharf.cli",
+            "--workspace",
+            str(workspace_root),
+            "select",
+            "demo",
+        ],
+        cwd=repo_root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert "Config file not found at" in result.stderr
+    assert "Traceback" not in result.stderr
+    assert "click.exceptions.Exit" not in result.stderr
+    assert "Traceback" not in result.stdout
+    assert "click.exceptions.Exit" not in result.stdout
