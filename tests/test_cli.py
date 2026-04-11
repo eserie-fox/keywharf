@@ -55,7 +55,35 @@ def test_repo_host_group_without_subcommand_shows_help() -> None:
     result = RUNNER.invoke(app, ["repo", "host"])
 
     assert result.exit_code == 0
-    assert "List, show, and edit host definitions in the host repo." in result.output
+    assert "host shells" in result.output
+    assert "endpoint" in result.output
+    assert "authentication" in result.output
+    assert "list" in result.output
+    assert "show" in result.output
+    assert "add" in result.output
+    assert "update" in result.output
+    assert "remove" in result.output
+    assert "endpoint" in result.output
+    assert "auth" in result.output
+
+
+def test_repo_host_endpoint_group_without_subcommand_shows_help() -> None:
+    result = RUNNER.invoke(app, ["repo", "host", "endpoint"])
+
+    assert result.exit_code == 0
+    assert "Manage named endpoint options for one host." in result.output
+    assert "list" in result.output
+    assert "show" in result.output
+    assert "add" in result.output
+    assert "update" in result.output
+    assert "remove" in result.output
+
+
+def test_repo_host_auth_group_without_subcommand_shows_help() -> None:
+    result = RUNNER.invoke(app, ["repo", "host", "auth"])
+
+    assert result.exit_code == 0
+    assert "Manage named authentication options for one host." in result.output
     assert "list" in result.output
     assert "show" in result.output
     assert "add" in result.output

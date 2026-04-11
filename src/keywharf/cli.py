@@ -14,7 +14,7 @@ from keywharf.version import __version__
 
 app = typer.Typer(
     name="keywharf",
-    help="Select SSH host definitions from a host repo into local desired state, then render/apply keywharf managed SSH config fragments.",
+    help="Select SSH hosts from a host repo into local desired state, then render/apply keywharf managed SSH config fragments.",
     invoke_without_command=True,
 )
 

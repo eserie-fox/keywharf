@@ -39,12 +39,14 @@ def load_host_definition_map(config: ResolvedManagerConfig) -> dict[str, HostDef
     return mapping
 
 
-def validate_host_definitions(
+def validate_host_repo_structure(
     config: ResolvedManagerConfig,
     host_definitions: list[HostDefinition],
+    *,
+    allow_empty: bool = False,
 ) -> ValidationResult:
     errors: list[str] = []
-    if not host_definitions:
+    if not host_definitions and not allow_empty:
         errors.append("Host repo config is empty.")
 
     seen_server_names: set[str] = set()
@@ -57,11 +59,6 @@ def validate_host_definitions(
             errors.append(f"Duplicate ServerName '{server_name}' in host repo config.")
         else:
             seen_server_names.add(server_name)
-
-        if not host_definition.endpoints:
-            errors.append(f"Config '{server_name}' has no endpoint options.")
-        if not host_definition.authentication:
-            errors.append(f"Config '{server_name}' has no authentication options.")
 
         errors.extend(
             _validate_named_options(
@@ -80,7 +77,15 @@ def validate_host_definitions(
             )
         )
 
+        for endpoint in host_definition.endpoints:
+            if endpoint.hostname is None:
+                errors.append(f"Endpoint for '{server_name}' is missing HostName.")
+
         for auth in host_definition.authentication:
+            if auth.user is None and auth.identity_file is None:
+                errors.append(
+                    f"Authentication for '{server_name}' must set User or IdentityFile."
+                )
             if not auth.identity_file:
                 continue
             identity_path = config.resolve_from_host_repo(auth.identity_file)
@@ -88,6 +93,30 @@ def validate_host_definitions(
                 errors.append(f"Identity file {identity_path.as_posix()} not found")
 
     return ValidationResult(ok=not errors, errors=errors)
+
+
+def collect_incomplete_host_errors(host_definitions: list[HostDefinition]) -> tuple[list[str], set[str]]:
+    errors: list[str] = []
+    incomplete_hosts: set[str] = set()
+    for host_definition in host_definitions:
+        server_name = host_definition.server_name
+        if not server_name:
+            continue
+        issue = _incomplete_host_error(server_name, host_definition)
+        if issue is None:
+            continue
+        errors.append(issue)
+        incomplete_hosts.add(server_name)
+    return errors, incomplete_hosts
+
+
+def incomplete_host_guidance() -> str:
+    return (
+        "Add missing options with "
+        "'keywharf repo host endpoint add <server_name> <endpoint_name> --hostname <host>' "
+        "and 'keywharf repo host auth add <server_name> <auth_name> "
+        "[--user <user>] [--identity-file <path>]'."
+    )
 
 
 def resolve_selection(
@@ -135,6 +164,13 @@ def validate_selection(
     host_definition = host_definitions.get(selection.server_name)
     if host_definition is None:
         return [f"Selected host '{selection.server_name}' is not present in the host repo."]
+
+    completeness_error = _selection_incomplete_host_errors(
+        selection.server_name,
+        host_definition,
+    )
+    if completeness_error:
+        return completeness_error
 
     errors: list[str] = []
     errors.extend(
@@ -274,3 +310,39 @@ def _validate_requested_option(
     if any(option.name == requested_name for option in options):
         return []
     return [f"Config '{server_name}' has no {label} named '{requested_name}'."]
+
+
+def _incomplete_host_error(
+    server_name: str,
+    host_definition: HostDefinition,
+) -> str | None:
+    missing_endpoint = not host_definition.endpoints
+    missing_auth = not host_definition.authentication
+    if missing_endpoint and missing_auth:
+        return f"Host '{server_name}' has no endpoint or authentication options."
+    if missing_endpoint:
+        return f"Host '{server_name}' has no endpoint options."
+    if missing_auth:
+        return f"Host '{server_name}' has no authentication options."
+    return None
+
+
+def _selection_incomplete_host_errors(
+    server_name: str,
+    host_definition: HostDefinition,
+) -> list[str]:
+    missing_endpoint = not host_definition.endpoints
+    missing_auth = not host_definition.authentication
+    if not missing_endpoint and not missing_auth:
+        return []
+
+    errors = [_incomplete_host_error(server_name, host_definition) or ""]
+    if missing_endpoint:
+        errors.append(
+            f"Run 'keywharf repo host endpoint add {server_name} <endpoint_name> --hostname <host>'."
+        )
+    if missing_auth:
+        errors.append(
+            f"Run 'keywharf repo host auth add {server_name} <auth_name> [--user <user>] [--identity-file <path>]'."
+        )
+    return errors

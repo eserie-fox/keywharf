@@ -52,6 +52,9 @@ def test_init_creates_workspace_from_package_resources(tmp_path: Path) -> None:
     assert "empty workspace repo" in result.output
     assert "repo sync" in result.output
     assert "repo init" in result.output
+    assert "repo host add <server>" in result.output
+    assert "repo host endpoint add <server> <endpoint_name> --hostname <host>" in result.output
+    assert "repo host auth add <server> <auth_name>" in result.output
 
 
 def test_init_creates_named_workspace_not_current_directory(tmp_path: Path, monkeypatch) -> None:

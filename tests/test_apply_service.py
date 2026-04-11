@@ -8,6 +8,7 @@ from keywharf.domain.errors import KeywharfError
 from keywharf.services.apply import apply_selected_state
 from tests.support import (
     host_repo_payload,
+    host_shell_payload,
     load_config,
     make_workspace,
     selection_payload,
@@ -118,3 +119,32 @@ def test_apply_allow_empty_can_clear_non_empty_managed_output(tmp_path: Path) ->
 
     assert result.changed is True
     assert "Host stale" not in config.managed_config_path.read_text(encoding="utf-8")
+
+
+def test_apply_ignores_unselected_incomplete_hosts(tmp_path: Path) -> None:
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    write_local_ssh_config(config.ssh_dir, "Host untouched\n  HostName untouched.example.com\n")
+    write_identity_file(config.host_repo_path)
+    write_host_repo_config(
+        config.host_repo_path,
+        payload=[
+            host_repo_payload(endpoint_name="public", auth_name="home")[0],
+            host_shell_payload(server_name="draft"),
+        ],
+    )
+    write_state_file(
+        config.state_path,
+        payload=state_payload(
+            selected_hosts=[
+                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+            ]
+        ),
+    )
+
+    result = apply_selected_state(config)
+
+    assert result.changed is True
+    assert "Host demo" in config.managed_config_path.read_text(encoding="utf-8")
+    assert "draft" not in config.managed_config_path.read_text(encoding="utf-8")

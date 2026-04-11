@@ -90,5 +90,7 @@ def register(app: typer.Typer) -> None:
         typer.echo(f"- Run: keywharf --workspace {result.workspace_root} repo sync")
         typer.echo("B. You are starting from scratch:")
         typer.echo(f"- Run: keywharf --workspace {result.workspace_root} repo init")
-        typer.echo(f"- Then: keywharf --workspace {result.workspace_root} repo host add <server> --hostname <host> --user <user> --identity-file keys/<id_file>")
+        typer.echo(f"- Then: keywharf --workspace {result.workspace_root} repo host add <server>")
+        typer.echo(f"- Then: keywharf --workspace {result.workspace_root} repo host endpoint add <server> <endpoint_name> --hostname <host>")
+        typer.echo(f"- Then: keywharf --workspace {result.workspace_root} repo host auth add <server> <auth_name> [--user <user>] [--identity-file <path>]")
         typer.echo(f"- If you want a real git repo later, run git init / git remote add / commit / push yourself in {result.host_repo_path}.")

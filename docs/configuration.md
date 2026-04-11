@@ -121,6 +121,8 @@ Validation rules:
 - `ServerName` must be present and unique
 - if a host has multiple endpoints, each endpoint needs a unique `EndPointName`
 - if a host has multiple authentication options, each authentication needs a unique `AuthenticationName`
+- endpoint `Comment` is preserved
+- authentication `Comment` is preserved
 - referenced identity files must exist in the host repo
 - state selectors must resolve uniquely against the current host repo
 
@@ -132,14 +134,20 @@ Validation rules:
 
 `keywharf init` creates `%{WORKSPACE}/repo` as an empty directory. `repo init` then writes this skeleton there. It does not run `git init` or create `.git`.
 
-`repo host add/update/remove` edit only this host repo file. They do not commit, push, or initialize git.
+`repo host add/update/remove`, `repo host endpoint ...`, and `repo host auth ...` edit only this host repo file. They do not commit, push, or initialize git.
 
 Current edit boundary:
 
-- Host-level CRUD only
-- one new host is created with one endpoint and one authentication entry
+- host shells support `Comment`
+- endpoints support stable `EndPointName`, `HostName`, optional `Port`, and optional `Comment`
+- authentication options support stable `AuthenticationName`, optional `User`, optional `IdentityFile`, and optional `Comment`
+- `repo host add` creates a host shell only
+- `repo host endpoint add` is how endpoints are added later
+- `repo host auth add` is how authentication options are added later
+- `select` stores endpoint/auth stable names in local state
+- `validate` reports every host shell missing endpoint options, authentication options, or both
+- `render` and `apply` only require selected hosts to be complete
 - `ExtraConfig` is preserved but not exposed as CLI CRUD yet
-- when a host has multiple endpoint/auth options, `repo host update` requires `--target-endpoint` / `--target-auth`
 
 ## Managed Output
 

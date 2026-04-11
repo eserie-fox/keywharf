@@ -19,4 +19,8 @@ def test_public_docs_use_current_workspace_and_repo_terms() -> None:
     assert "%{WORKSPACE}/repo" in text
     assert "repo init" in text
     assert "repo sync" in text
-    assert "repo host" in text
+    assert "repo host add" in text
+    assert "repo host endpoint add" in text
+    assert "repo host auth add" in text
+    assert "stable" in text
+    assert "comment" in text

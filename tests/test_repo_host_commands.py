@@ -10,7 +10,10 @@ from typer.testing import CliRunner
 from keywharf.cli import app
 from keywharf.domain.errors import KeywharfError
 from tests.support import (
+    auth_payload,
+    endpoint_payload,
     host_repo_payload,
+    host_shell_payload,
     load_config,
     make_workspace,
     read_json,
@@ -55,39 +58,26 @@ def _create_bare_host_repo_remote(base_dir: Path) -> Path:
     return remote_repo
 
 
-def test_repo_host_list_and_show_read_host_repo_config(tmp_path: Path) -> None:
-    workspace_root = make_workspace(tmp_path)
-    config_path = write_manager_config(workspace_root / "config.json")
-    config = load_config(config_path, workspace_root=workspace_root)
-    host_repo_path = config.host_repo_path
-    write_identity_file(host_repo_path)
-    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
-
-    list_result = RUNNER.invoke(app, ["--config", str(config_path), "repo", "host", "list", "--json"])
-    show_result = RUNNER.invoke(app, ["--config", str(config_path), "repo", "host", "show", "demo", "--json"])
-
-    assert list_result.exit_code == 0, list_result.output
-    assert show_result.exit_code == 0, show_result.output
-    listed = json.loads(list_result.output)
-    shown = json.loads(show_result.output)
-    assert listed[0]["ServerName"] == "demo"
-    assert shown["ServerName"] == "demo"
-
-
-def test_repo_init_bootstraps_local_host_repo_and_allows_host_add(tmp_path: Path) -> None:
+def test_repo_init_bootstraps_local_host_repo_skeleton_without_git(tmp_path: Path) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)
 
-    init_result = RUNNER.invoke(app, ["--config", str(config_path), "repo", "init"])
+    result = RUNNER.invoke(app, ["--config", str(config_path), "repo", "init"])
 
-    assert init_result.exit_code == 0, init_result.output
+    assert result.exit_code == 0, result.output
     assert read_json(config.host_repo_path / "config.json") == []
     assert (config.host_repo_path / "keys").is_dir()
     assert (config.host_repo_path / ".gitignore").exists()
     assert not (config.host_repo_path / ".git").exists()
 
-    write_identity_file(config.host_repo_path)
+
+def test_repo_host_add_creates_shell_and_emits_guidance(tmp_path: Path) -> None:
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    write_host_repo_config(config.host_repo_path, payload=[])
+
     add_result = RUNNER.invoke(
         app,
         [
@@ -97,164 +87,38 @@ def test_repo_init_bootstraps_local_host_repo_and_allows_host_add(tmp_path: Path
             "host",
             "add",
             "demo",
-            "--hostname",
-            "demo.example.com",
-            "--user",
-            "fox",
-            "--identity-file",
-            "keys/id_demo",
-            "--endpoint-name",
-            "public",
-            "--auth-name",
-            "home",
+            "--comment",
+            "demo host",
         ],
+    )
+    list_result = RUNNER.invoke(app, ["--config", str(config_path), "repo", "host", "list", "--json"])
+    show_result = RUNNER.invoke(
+        app,
+        ["--config", str(config_path), "repo", "host", "show", "demo", "--json"],
     )
 
     assert add_result.exit_code == 0, add_result.output
-    assert read_json(config.host_repo_path / "config.json")[0]["ServerName"] == "demo"
+    assert "Added host 'demo'" in add_result.output
+    assert "has no endpoint or authentication options yet" in add_result.output
+    assert "repo host endpoint add demo <endpoint_name> --hostname <host>" in add_result.output
+    assert "repo host auth add demo <auth_name>" in add_result.output
+
+    payload = read_json(config.host_repo_path / "config.json")
+    assert payload == [{"ServerName": "demo", "Comment": "demo host"}]
+
+    listed = json.loads(list_result.output)
+    shown = json.loads(show_result.output)
+    assert listed == payload
+    assert shown == payload[0]
 
 
-def test_repo_host_add_writes_structured_host_entry(tmp_path: Path) -> None:
+def test_repo_host_update_changes_top_level_fields_only(tmp_path: Path) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)
-    host_repo_path = config.host_repo_path
-    write_identity_file(host_repo_path)
-    write_host_repo_config(host_repo_path, payload=[])
+    write_host_repo_config(config.host_repo_path, payload=[host_shell_payload()])
 
     result = RUNNER.invoke(
-        app,
-        [
-            "--config",
-            str(config_path),
-            "repo",
-            "host",
-            "add",
-            "demo",
-            "--hostname",
-            "demo.example.com",
-            "--user",
-            "fox",
-            "--identity-file",
-            "keys/id_demo",
-            "--endpoint-name",
-            "public",
-            "--auth-name",
-            "home",
-        ],
-    )
-
-    assert result.exit_code == 0, result.output
-    payload = read_json(host_repo_path / "config.json")
-    assert payload == [
-        {
-            "ServerName": "demo",
-            "Endpoint": [
-                {
-                    "EndPointName": "public",
-                    "HostName": "demo.example.com",
-                    "Port": 22,
-                }
-            ],
-            "Authentication": [
-                {
-                    "AuthenticationName": "home",
-                    "User": "fox",
-                    "IdentityFile": "keys/id_demo",
-                }
-            ],
-        }
-    ]
-
-
-def test_repo_host_add_rejects_duplicate_server_name(tmp_path: Path) -> None:
-    workspace_root = make_workspace(tmp_path)
-    config_path = write_manager_config(workspace_root / "config.json")
-    config = load_config(config_path, workspace_root=workspace_root)
-    host_repo_path = config.host_repo_path
-    write_identity_file(host_repo_path)
-    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
-
-    result = RUNNER.invoke(
-        app,
-        [
-            "--config",
-            str(config_path),
-            "repo",
-            "host",
-            "add",
-            "demo",
-            "--hostname",
-            "other.example.com",
-            "--user",
-            "fox",
-            "--identity-file",
-            "keys/id_demo",
-        ],
-    )
-
-    assert result.exit_code == 1
-    assert isinstance(result.exception, KeywharfError)
-    assert "already exists" in str(result.exception)
-
-
-def test_repo_host_update_requires_target_selectors_for_multi_option_hosts(tmp_path: Path) -> None:
-    workspace_root = make_workspace(tmp_path)
-    config_path = write_manager_config(workspace_root / "config.json")
-    config = load_config(config_path, workspace_root=workspace_root)
-    host_repo_path = config.host_repo_path
-    write_identity_file(host_repo_path, "keys/id_home")
-    write_identity_file(host_repo_path, "keys/id_work")
-    write_host_repo_config(
-        host_repo_path,
-        payload=host_repo_payload(
-            endpoints=[
-                {"EndPointName": "public", "HostName": "public.example.com", "Port": 22},
-                {"EndPointName": "private", "HostName": "private.example.com", "Port": 22},
-            ],
-            authentications=[
-                {"AuthenticationName": "home", "User": "fox", "IdentityFile": "keys/id_home"},
-                {"AuthenticationName": "work", "User": "fox", "IdentityFile": "keys/id_work"},
-            ],
-        ),
-    )
-
-    result = RUNNER.invoke(
-        app,
-        [
-            "--config",
-            str(config_path),
-            "repo",
-            "host",
-            "update",
-            "demo",
-            "--hostname",
-            "updated.example.com",
-        ],
-    )
-
-    assert result.exit_code == 1
-    assert isinstance(result.exception, KeywharfError)
-    assert "--target-endpoint" in str(result.exception)
-
-
-def test_repo_host_update_and_remove_warn_when_local_state_becomes_stale(tmp_path: Path) -> None:
-    workspace_root = make_workspace(tmp_path)
-    config_path = write_manager_config(workspace_root / "config.json")
-    config = load_config(config_path, workspace_root=workspace_root)
-    host_repo_path = config.host_repo_path
-    write_identity_file(host_repo_path)
-    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
-    write_state_file(
-        config.state_path,
-        payload=state_payload(
-            selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
-            ]
-        ),
-    )
-
-    update_result = RUNNER.invoke(
         app,
         [
             "--config",
@@ -265,8 +129,126 @@ def test_repo_host_update_and_remove_warn_when_local_state_becomes_stale(tmp_pat
             "demo",
             "--new-name",
             "renamed",
-            "--auth-name",
-            "work",
+            "--comment",
+            "renamed host",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["subject"] == "host"
+    assert payload["host"]["ServerName"] == "renamed"
+    assert payload["host"]["Comment"] == "renamed host"
+    assert read_json(config.host_repo_path / "config.json") == [
+        {"ServerName": "renamed", "Comment": "renamed host", "ExtraConfig": [{"Key": "ProxyJump", "Value": "bastion", "Comment": "optional hop"}]}
+    ]
+
+
+def test_repo_host_update_rejects_comment_clear_conflict(tmp_path: Path) -> None:
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    write_host_repo_config(config.host_repo_path, payload=[host_shell_payload()])
+
+    result = RUNNER.invoke(
+        app,
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "update",
+            "demo",
+            "--comment",
+            "x",
+            "--clear-comment",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--comment cannot be used with --clear-comment" in result.output
+
+
+def test_repo_host_remove_warns_when_local_state_becomes_stale(tmp_path: Path) -> None:
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    write_identity_file(config.host_repo_path)
+    write_host_repo_config(
+        config.host_repo_path,
+        payload=host_repo_payload(endpoint_name="public", auth_name="home"),
+    )
+    write_state_file(
+        config.state_path,
+        payload=state_payload(
+            selected_hosts=[
+                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+            ]
+        ),
+    )
+
+    result = RUNNER.invoke(
+        app,
+        ["--config", str(config_path), "repo", "host", "remove", "demo"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "WARNING: Local state still selects 'demo'" in result.output
+    assert read_json(config.host_repo_path / "config.json") == []
+
+
+def test_repo_host_endpoint_add_list_show_update_remove_and_persist_comment(tmp_path: Path) -> None:
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    write_host_repo_config(config.host_repo_path, payload=[host_shell_payload()])
+
+    add_result = RUNNER.invoke(
+        app,
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "endpoint",
+            "add",
+            "demo",
+            "public",
+            "--hostname",
+            "demo.example.com",
+            "--comment",
+            "edge endpoint",
+        ],
+    )
+    list_result = RUNNER.invoke(
+        app,
+        ["--config", str(config_path), "repo", "host", "endpoint", "list", "demo", "--json"],
+    )
+    show_result = RUNNER.invoke(
+        app,
+        ["--config", str(config_path), "repo", "host", "endpoint", "show", "demo", "public", "--json"],
+    )
+    update_result = RUNNER.invoke(
+        app,
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "endpoint",
+            "update",
+            "demo",
+            "public",
+            "--new-name",
+            "private",
+            "--hostname",
+            "internal.example.com",
+            "--port",
+            "2222",
+            "--comment",
+            "internal endpoint",
+            "--json",
         ],
     )
     remove_result = RUNNER.invoke(
@@ -276,19 +258,356 @@ def test_repo_host_update_and_remove_warn_when_local_state_becomes_stale(tmp_pat
             str(config_path),
             "repo",
             "host",
+            "endpoint",
             "remove",
-            "renamed",
-            "--json",
+            "demo",
+            "private",
         ],
     )
 
-    assert update_result.exit_code == 0, update_result.output
-    assert "WARNING: Local state still refers to host 'demo'" in update_result.output
+    assert add_result.exit_code == 0, add_result.output
+    assert "Added endpoint 'public' for host 'demo'" in add_result.output
+    listed = json.loads(list_result.output)
+    shown = json.loads(show_result.output)
+    updated = json.loads(update_result.output)
+    assert listed == [
+        {
+            "EndPointName": "public",
+            "HostName": "demo.example.com",
+            "Comment": "edge endpoint",
+        }
+    ]
+    assert shown == listed[0]
+    assert updated["endpoint"] == {
+        "EndPointName": "private",
+        "HostName": "internal.example.com",
+        "Port": 2222,
+        "Comment": "internal endpoint",
+    }
     assert remove_result.exit_code == 0, remove_result.output
-    payload = json.loads(remove_result.output)
-    assert payload["removed_name"] == "renamed"
-    assert payload["warnings"] == []
-    assert read_json(host_repo_path / "config.json") == []
+    assert read_json(config.host_repo_path / "config.json") == [
+        {
+            "ServerName": "demo",
+            "Comment": "demo host",
+            "ExtraConfig": [{"Key": "ProxyJump", "Value": "bastion", "Comment": "optional hop"}],
+        }
+    ]
+
+
+def test_repo_host_endpoint_update_supports_clear_flags_and_warns_about_stale_selection(tmp_path: Path) -> None:
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    write_identity_file(config.host_repo_path)
+    write_host_repo_config(
+        config.host_repo_path,
+        payload=host_repo_payload(endpoint_name="public", auth_name="home"),
+    )
+    write_state_file(
+        config.state_path,
+        payload=state_payload(
+            selected_hosts=[
+                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+            ]
+        ),
+    )
+
+    result = RUNNER.invoke(
+        app,
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "endpoint",
+            "update",
+            "demo",
+            "public",
+            "--new-name",
+            "private",
+            "--clear-port",
+            "--clear-comment",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "WARNING: Local state still refers to endpoint 'public' for 'demo'" in result.output
+    assert read_json(config.host_repo_path / "config.json")[0]["Endpoint"] == [
+        {"EndPointName": "private", "HostName": "example.com"}
+    ]
+
+
+def test_repo_host_endpoint_update_rejects_port_clear_conflict(tmp_path: Path) -> None:
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    write_host_repo_config(config.host_repo_path, payload=[host_shell_payload()])
+
+    result = RUNNER.invoke(
+        app,
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "endpoint",
+            "add",
+            "demo",
+            "public",
+            "--hostname",
+            "demo.example.com",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    conflict_result = RUNNER.invoke(
+        app,
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "endpoint",
+            "update",
+            "demo",
+            "public",
+            "--port",
+            "22",
+            "--clear-port",
+        ],
+    )
+
+    assert conflict_result.exit_code != 0
+    assert "--port cannot be used with --clear-port" in conflict_result.output
+
+
+def test_repo_host_auth_add_list_show_update_remove_and_persist_comment(tmp_path: Path) -> None:
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    write_host_repo_config(config.host_repo_path, payload=[host_shell_payload()])
+    write_identity_file(config.host_repo_path, "keys/id_home")
+    write_identity_file(config.host_repo_path, "keys/id_work")
+
+    add_result = RUNNER.invoke(
+        app,
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "auth",
+            "add",
+            "demo",
+            "home",
+            "--user",
+            "fox",
+            "--identity-file",
+            "keys/id_home",
+            "--comment",
+            "home key",
+        ],
+    )
+    list_result = RUNNER.invoke(
+        app,
+        ["--config", str(config_path), "repo", "host", "auth", "list", "demo", "--json"],
+    )
+    show_result = RUNNER.invoke(
+        app,
+        ["--config", str(config_path), "repo", "host", "auth", "show", "demo", "home", "--json"],
+    )
+    update_result = RUNNER.invoke(
+        app,
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "auth",
+            "update",
+            "demo",
+            "home",
+            "--new-name",
+            "work",
+            "--user",
+            "ops",
+            "--identity-file",
+            "keys/id_work",
+            "--comment",
+            "work key",
+            "--json",
+        ],
+    )
+    remove_result = RUNNER.invoke(
+        app,
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "auth",
+            "remove",
+            "demo",
+            "work",
+        ],
+    )
+
+    assert add_result.exit_code == 0, add_result.output
+    assert "Added auth 'home' for host 'demo'" in add_result.output
+    listed = json.loads(list_result.output)
+    shown = json.loads(show_result.output)
+    updated = json.loads(update_result.output)
+    assert listed == [
+        {
+            "AuthenticationName": "home",
+            "User": "fox",
+            "IdentityFile": "keys/id_home",
+            "Comment": "home key",
+        }
+    ]
+    assert shown == listed[0]
+    assert updated["auth"] == {
+        "AuthenticationName": "work",
+        "User": "ops",
+        "IdentityFile": "keys/id_work",
+        "Comment": "work key",
+    }
+    assert remove_result.exit_code == 0, remove_result.output
+    assert read_json(config.host_repo_path / "config.json") == [
+        {
+            "ServerName": "demo",
+            "Comment": "demo host",
+            "ExtraConfig": [{"Key": "ProxyJump", "Value": "bastion", "Comment": "optional hop"}],
+        }
+    ]
+
+
+def test_repo_host_auth_add_requires_user_or_identity_file(tmp_path: Path) -> None:
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    write_host_repo_config(config.host_repo_path, payload=[host_shell_payload()])
+
+    result = RUNNER.invoke(
+        app,
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "auth",
+            "add",
+            "demo",
+            "home",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, KeywharfError)
+    assert "must set user or identity file" in str(result.exception)
+
+
+def test_repo_host_auth_update_rejects_conflicts_and_empty_auth(tmp_path: Path) -> None:
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    write_identity_file(config.host_repo_path)
+    write_host_repo_config(
+        config.host_repo_path,
+        payload=[host_shell_payload(),],
+    )
+    add_result = RUNNER.invoke(
+        app,
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "auth",
+            "add",
+            "demo",
+            "home",
+            "--user",
+            "fox",
+        ],
+    )
+    assert add_result.exit_code == 0, add_result.output
+
+    conflict_result = RUNNER.invoke(
+        app,
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "auth",
+            "update",
+            "demo",
+            "home",
+            "--user",
+            "ops",
+            "--clear-user",
+        ],
+    )
+    empty_result = RUNNER.invoke(
+        app,
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "auth",
+            "update",
+            "demo",
+            "home",
+            "--clear-user",
+            "--clear-identity-file",
+        ],
+    )
+
+    assert conflict_result.exit_code != 0
+    assert "--user cannot be used with --clear-user" in conflict_result.output
+    assert empty_result.exit_code == 1
+    assert isinstance(empty_result.exception, KeywharfError)
+    assert "must set user or identity file" in str(empty_result.exception)
+
+
+def test_repo_host_auth_update_warns_when_selected_name_changes(tmp_path: Path) -> None:
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    write_identity_file(config.host_repo_path)
+    write_host_repo_config(
+        config.host_repo_path,
+        payload=host_repo_payload(endpoint_name="public", auth_name="home"),
+    )
+    write_state_file(
+        config.state_path,
+        payload=state_payload(
+            selected_hosts=[
+                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+            ]
+        ),
+    )
+
+    result = RUNNER.invoke(
+        app,
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "auth",
+            "update",
+            "demo",
+            "home",
+            "--new-name",
+            "work",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "WARNING: Local state still refers to authentication 'home' for 'demo'" in result.output
 
 
 def test_repo_sync_errors_when_host_repo_remote_url_is_null(tmp_path: Path) -> None:

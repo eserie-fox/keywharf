@@ -56,7 +56,7 @@ Current coverage includes:
 - runtime path resolution and workspace discovery
 - package-resource-driven `init`
 - package `.j2` loading and rendering
-- repo host CRUD
+- repo host/endpoint/auth CRUD
 - state persistence
 - validation and selector stability
 - render no-write behavior
@@ -94,7 +94,7 @@ Do not reintroduce:
 - keep services free of Rich/Typer concerns
 - keep storage free of CLI concerns
 - keep the main SSH config outside normal write paths
-- keep host definition editing limited to the host repo unless a later phase explicitly expands that scope
+- keep host/endpoint/auth editing limited to the host repo unless a later phase explicitly expands that scope
 
 ## Packaging
 

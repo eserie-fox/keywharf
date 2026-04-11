@@ -6,11 +6,11 @@
 
 - `commands`: Typer adapters only. They parse CLI options, format terminal/JSON output, run sudo re-exec, and map failures to exit codes.
 - `config`: formal manager-config schema, defaults loading, deep merge, and runtime resolution.
-- `services`: workflow orchestration for `init`, `repo init`, `repo sync`, `select`, `validate`, `render`, `apply`, include installation, local views, and host definition editing.
+- `services`: workflow orchestration for `init`, `repo init`, `repo sync`, `select`, `validate`, `render`, `apply`, include installation, local views, and host/endpoint/auth editing.
 - `storage`: JSON/file I/O, git sync, state persistence, managed-file writes, and host repo config writes.
 - `ssh_config`: low-level parse/build/render logic for managed SSH host blocks.
 - `runtime`: workspace discovery and `%{WORKSPACE}` token handling.
-- `domain`: host definition models, local state models, SSH host value objects, result types, and project-specific errors.
+- `domain`: host repo models, local state models, SSH host value objects, result types, and project-specific errors.
 
 Dependency direction stays one-way:
 
@@ -29,7 +29,7 @@ Steady-state workflow:
 1. `init` creates a workspace skeleton from package resources, including an empty `repo/` directory
 2. `repo init` optionally bootstraps a local-first host repo skeleton inside that one workspace repo directory
 3. `repo sync` clones or updates the host repo in that same directory
-4. `repo host ...` edits the host repo `config.json`
+4. `repo host ...` edits host shells, endpoint options, and authentication options in the host repo `config.json`
 5. `select` / `deselect` mutate `state_path`
 6. `validate` checks manager config, host repo config, state, and include presence
 7. `render` resolves state into desired `SSHHostConfig` objects and managed config text
@@ -41,6 +41,8 @@ This keeps:
 - desired state separate from rendered output
 - rendered output separate from filesystem mutation
 - the main SSH config outside normal write paths
+- repo-wide completeness checking in `validate`
+- selected-host usability checks in `select`, `render`, and `apply`
 
 ## Ownership Boundary
 

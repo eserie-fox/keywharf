@@ -23,16 +23,20 @@ If you are starting from scratch:
 
 ```bash
 keywharf --workspace {{ workspace_root }} repo init
-keywharf --workspace {{ workspace_root }} repo host add <server> --hostname <host> --user <user> --identity-file keys/<id_file>
+keywharf --workspace {{ workspace_root }} repo host add <server>
+keywharf --workspace {{ workspace_root }} repo host endpoint add <server> <endpoint_name> --hostname <host>
+keywharf --workspace {{ workspace_root }} repo host auth add <server> <auth_name> [--user <user>] [--identity-file <path>]
 # if you want a real git repo later, run git init / git remote add / commit / push in {{ host_repo_path }} yourself
 ```
 
 After your host repo has content:
 
 ```bash
-keywharf --workspace {{ workspace_root }} select <server>
+keywharf --workspace {{ workspace_root }} select <server> --endpoint <endpoint_name> --auth <auth_name>
 keywharf --workspace {{ workspace_root }} validate
 keywharf --workspace {{ workspace_root }} render
 keywharf --workspace {{ workspace_root }} apply
 keywharf --workspace {{ workspace_root }} install-include
 ```
+
+Hosts may exist as shells before they are usable. `validate` reports every host that is still missing endpoint options, authentication options, or both. `render` and `apply` only require selected hosts to be complete.

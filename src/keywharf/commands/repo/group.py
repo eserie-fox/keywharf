@@ -17,7 +17,7 @@ app = typer.Typer(
 host_app = typer.Typer(
     name="host",
     no_args_is_help=True,
-    help="List, show, and edit host definitions in the host repo.",
+    help="Manage host shells plus named endpoint and authentication options in the host repo.",
 )
 
 register_repo_init_command(app)

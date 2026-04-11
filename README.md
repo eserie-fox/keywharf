@@ -1,6 +1,6 @@
 # keywharf
 
-`keywharf` is a Python 3.11+ CLI for selecting SSH host definitions from a host repo into a local desired state, then materializing only manager-owned SSH artifacts.
+`keywharf` is a Python 3.11+ CLI for selecting SSH hosts from a host repo into a local desired state, then materializing only manager-owned SSH artifacts.
 
 It manages only:
 
@@ -31,10 +31,12 @@ If you are starting from scratch:
 
 ```bash
 keywharf --workspace ~/demo repo init
-keywharf --workspace ~/demo repo host add demo --hostname demo.example.com --user fox --identity-file keys/id_demo
+keywharf --workspace ~/demo repo host add demo --comment "demo host"
+keywharf --workspace ~/demo repo host endpoint add demo public --hostname demo.example.com --comment "public endpoint"
+keywharf --workspace ~/demo repo host auth add demo home --user fox --identity-file keys/id_demo --comment "home key"
 ```
 
-`keywharf init` creates `~/demo/repo` as the workspace's one host repo directory, but it starts empty. `repo init` writes the host repo skeleton there. If you want it to become a real git repository, run `git init`, `git remote add`, and `git push` in `~/demo/repo` yourself.
+`keywharf init` creates `~/demo/repo` as the workspace's one host repo directory, but it starts empty. `repo init` writes the host repo skeleton there. `repo host add` creates a host shell only; endpoint and authentication options are added separately by stable name. If you want `~/demo/repo` to become a real git repository, run `git init`, `git remote add`, and `git push` there yourself.
 
 Then continue with normal selection and apply flow:
 
@@ -108,10 +110,29 @@ It writes those files into the workspace's one host repo directory, `%{WORKSPACE
 - `repo host add`
 - `repo host update`
 - `repo host remove`
+- `repo host endpoint list`
+- `repo host endpoint show`
+- `repo host endpoint add`
+- `repo host endpoint update`
+- `repo host endpoint remove`
+- `repo host auth list`
+- `repo host auth show`
+- `repo host auth add`
+- `repo host auth update`
+- `repo host auth remove`
 
 These commands do not commit, push, run `git init`, or mutate git metadata. They perform structured JSON reads/writes, preserve array order, and revalidate the resulting host set before writing.
 
-This round only adds Host-level CRUD. `ExtraConfig` is preserved and rendered, but it is not exposed as a CLI editor yet.
+Design rules:
+
+- `repo host add` creates a host shell and may set only the host comment
+- `repo host endpoint ...` manages named endpoint options with `HostName`, optional `Port`, and optional comment
+- `repo host auth ...` manages named authentication options with optional `User`, optional `IdentityFile`, and optional comment
+- `select` stores stable endpoint/auth names in local state
+- `validate` scans the whole host repo and reports every host shell that is missing endpoint options, authentication options, or both
+- `render` and `apply` only require the hosts selected in local state to be complete
+
+`ExtraConfig` is preserved and rendered, but it is not exposed as a CLI editor yet.
 
 ## `--sudo`
 
@@ -127,6 +148,12 @@ Mutating commands support `--sudo`:
 - `repo host add`
 - `repo host update`
 - `repo host remove`
+- `repo host endpoint add`
+- `repo host endpoint update`
+- `repo host endpoint remove`
+- `repo host auth add`
+- `repo host auth update`
+- `repo host auth remove`
 
 Privilege handling is centralized:
 

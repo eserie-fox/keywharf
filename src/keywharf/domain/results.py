@@ -35,20 +35,30 @@ class HostMutationResult:
 
 
 @dataclass(slots=True)
-class HostDefinitionMutationResult:
+class HostRepoMutationResult:
     operation: str
+    subject: str
     config_path: Path
+    name: str
+    server_name: str | None = None
     host: HostDefinition | None = None
-    removed_name: str | None = None
+    endpoint: HostEndpointOption | None = None
+    auth: HostAuthenticationOption | None = None
+    notes: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     changed: bool = True
 
     def to_dict(self) -> dict[str, object]:
         return {
             "operation": self.operation,
+            "subject": self.subject,
             "config_path": self.config_path.as_posix(),
+            "name": self.name,
+            "server_name": self.server_name,
             "host": self.host.to_dict() if self.host is not None else None,
-            "removed_name": self.removed_name,
+            "endpoint": self.endpoint.to_dict() if self.endpoint is not None else None,
+            "auth": self.auth.to_dict() if self.auth is not None else None,
+            "notes": list(self.notes),
             "warnings": list(self.warnings),
             "changed": self.changed,
         }

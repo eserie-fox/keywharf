@@ -103,49 +103,112 @@ def write_state_file(path: Path, payload: dict[str, Any] | None = None) -> Path:
     return write_json(path, payload or state_payload())
 
 
+def endpoint_payload(
+    *,
+    name: str | None = "public",
+    hostname: str | None = "example.com",
+    port: int | None = 22,
+    comment: str | None = "public",
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    if name is not None:
+        payload["EndPointName"] = name
+    if hostname is not None:
+        payload["HostName"] = hostname
+    if port is not None:
+        payload["Port"] = port
+    if comment is not None:
+        payload["Comment"] = comment
+    return payload
+
+
+def auth_payload(
+    *,
+    name: str | None = "home",
+    user: str | None = "fox",
+    identity_file: str | None = "keys/id_demo",
+    comment: str | None = "main key",
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    if name is not None:
+        payload["AuthenticationName"] = name
+    if user is not None:
+        payload["User"] = user
+    if identity_file is not None:
+        payload["IdentityFile"] = identity_file
+    if comment is not None:
+        payload["Comment"] = comment
+    return payload
+
+
+def host_shell_payload(
+    *,
+    server_name: str = "demo",
+    comment: str | None = "demo host",
+    extra_config: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {"ServerName": server_name}
+    if comment is not None:
+        payload["Comment"] = comment
+    if extra_config is not None:
+        payload["ExtraConfig"] = extra_config
+    else:
+        payload["ExtraConfig"] = [
+            {
+                "Key": "ProxyJump",
+                "Value": "bastion",
+                "Comment": "optional hop",
+            }
+        ]
+    return payload
+
+
 def host_repo_payload(
     *,
     server_name: str = "demo",
     endpoint_name: str | None = None,
     auth_name: str | None = None,
     hostname: str = "example.com",
-    port: int = 22,
-    user: str = "fox",
-    identity_file: str = "keys/id_demo",
+    port: int | None = 22,
+    user: str | None = "fox",
+    identity_file: str | None = "keys/id_demo",
+    comment: str | None = "demo host",
+    endpoint_comment: str | None = "public",
+    auth_comment: str | None = "main key",
     endpoints: list[dict[str, Any]] | None = None,
     authentications: list[dict[str, Any]] | None = None,
+    extra_config: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    return [
-        {
-            "ServerName": server_name,
-            "Comment": "demo host",
-            "Endpoint": endpoints
-            or [
-                {
-                    "EndPointName": endpoint_name,
-                    "HostName": hostname,
-                    "Port": port,
-                    "Comment": "public",
-                }
-            ],
-            "Authentication": authentications
-            or [
-                {
-                    "AuthenticationName": auth_name,
-                    "User": user,
-                    "IdentityFile": identity_file,
-                    "Comment": "main key",
-                }
-            ],
-            "ExtraConfig": [
-                {
-                    "Key": "ProxyJump",
-                    "Value": "bastion",
-                    "Comment": "optional hop",
-                }
-            ],
-        }
-    ]
+    payload = host_shell_payload(
+        server_name=server_name,
+        comment=comment,
+        extra_config=extra_config,
+    )
+    payload["Endpoint"] = (
+        endpoints
+        if endpoints is not None
+        else [
+            endpoint_payload(
+                name=endpoint_name,
+                hostname=hostname,
+                port=port,
+                comment=endpoint_comment,
+            )
+        ]
+    )
+    payload["Authentication"] = (
+        authentications
+        if authentications is not None
+        else [
+            auth_payload(
+                name=auth_name,
+                user=user,
+                identity_file=identity_file,
+                comment=auth_comment,
+            )
+        ]
+    )
+    return [payload]
 
 
 def write_host_repo_config(host_repo_path: Path, payload: list[dict[str, Any]] | None = None) -> Path:
