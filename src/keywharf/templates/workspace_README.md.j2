@@ -5,17 +5,34 @@ This directory is a `keywharf` workspace.
 - marker: `{{ marker_name }}`
 - config: `{{ config_path }}`
 - state: `{{ state_path }}`
+- host repo path: `{{ host_repo_path }}`
 - managed config: `{{ managed_config_path }}`
 - managed keys: `{{ managed_keys_dir }}`
 
-Typical flow:
+`keywharf init` only creates workspace files. It does not clone a git repo, initialize git, or touch `~/.ssh`.
+
+If you already have a host repo remote URL:
 
 ```bash
-keywharf --data-root {{ data_root }} pull
-keywharf --data-root {{ data_root }} remote host list
-keywharf --data-root {{ data_root }} select <server>
-keywharf --data-root {{ data_root }} validate
-keywharf --data-root {{ data_root }} render
-keywharf --data-root {{ data_root }} apply
-keywharf --data-root {{ data_root }} install-include
+# edit {{ config_path }} and set host_repo_remote_url
+keywharf --workspace {{ workspace_root }} repo sync
+keywharf --workspace {{ workspace_root }} repo host list
+```
+
+If you are starting from scratch:
+
+```bash
+keywharf --workspace {{ workspace_root }} repo init
+keywharf --workspace {{ workspace_root }} repo host add <server> --hostname <host> --user <user> --identity-file keys/<id_file>
+# then initialize git / add a remote / commit / push yourself if needed
+```
+
+After your host repo has content:
+
+```bash
+keywharf --workspace {{ workspace_root }} select <server>
+keywharf --workspace {{ workspace_root }} validate
+keywharf --workspace {{ workspace_root }} render
+keywharf --workspace {{ workspace_root }} apply
+keywharf --workspace {{ workspace_root }} install-include
 ```

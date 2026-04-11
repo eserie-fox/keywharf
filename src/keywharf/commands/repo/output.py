@@ -1,4 +1,4 @@
-"""Remote command output helpers."""
+"""Repo command output helpers."""
 
 from __future__ import annotations
 
@@ -8,11 +8,11 @@ import typer
 from rich.table import Table
 
 from keywharf.commands.output import console, render_auth_table, render_endpoint_table
-from keywharf.domain.models import RemoteExtraConfig, RemoteHostDefinition
-from keywharf.domain.results import RemoteHostMutationResult
+from keywharf.domain.models import HostDefinition, HostExtraConfig
+from keywharf.domain.results import HostDefinitionMutationResult
 
 
-def emit_remote_host_list(hosts: list[RemoteHostDefinition], *, json_output: bool) -> None:
+def emit_host_definition_list(hosts: list[HostDefinition], *, json_output: bool) -> None:
     if json_output:
         typer.echo(json.dumps([host.to_dict() for host in hosts], indent=2))
         return
@@ -30,19 +30,23 @@ def emit_remote_host_list(hosts: list[RemoteHostDefinition], *, json_output: boo
     console.print(table)
 
 
-def emit_remote_host(host: RemoteHostDefinition, *, json_output: bool) -> None:
+def emit_host_definition(host: HostDefinition, *, json_output: bool) -> None:
     if json_output:
         typer.echo(json.dumps(host.to_dict(), indent=2))
         return
 
-    console.print(f"Remote host: {host.server_name or ''}")
+    console.print(f"Host definition: {host.server_name or ''}")
     console.print(render_endpoint_table(host.endpoints))
     console.print(render_auth_table(host.authentication))
     if host.extra_config:
         console.print(render_extra_config_table(host.extra_config))
 
 
-def emit_remote_host_mutation(result: RemoteHostMutationResult, *, json_output: bool) -> None:
+def emit_host_definition_mutation(
+    result: HostDefinitionMutationResult,
+    *,
+    json_output: bool,
+) -> None:
     if json_output:
         typer.echo(json.dumps(result.to_dict(), indent=2))
         return
@@ -54,14 +58,14 @@ def emit_remote_host_mutation(result: RemoteHostMutationResult, *, json_output: 
             "update": "Updated",
             "remove": "Removed",
         }.get(result.operation, result.operation.title())
-        typer.echo(f"{verb} remote host '{noun}' in {result.config_path}.")
+        typer.echo(f"{verb} host '{noun}' in {result.config_path}.")
     else:
-        typer.echo(f"No remote host changes were needed for '{noun}'.")
+        typer.echo(f"No host definition changes were needed for '{noun}'.")
     for warning in result.warnings:
         typer.echo(f"WARNING: {warning}", err=True)
 
 
-def render_extra_config_table(extra_config: list[RemoteExtraConfig]) -> Table:
+def render_extra_config_table(extra_config: list[HostExtraConfig]) -> Table:
     table = Table(show_header=True, header_style="bold")
     table.add_column("Key")
     table.add_column("Value")

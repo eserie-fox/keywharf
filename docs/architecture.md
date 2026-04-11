@@ -6,11 +6,11 @@
 
 - `commands`: Typer adapters only. They parse CLI options, format terminal/JSON output, run sudo re-exec, and map failures to exit codes.
 - `config`: formal manager-config schema, defaults loading, deep merge, and runtime resolution.
-- `services`: workflow orchestration for `init`, `pull`, `select`, `validate`, `render`, `apply`, include installation, local views, and remote host editing.
-- `storage`: JSON/file I/O, git sync, state persistence, managed-file writes, and remote repo config writes.
+- `services`: workflow orchestration for `init`, `repo init`, `repo sync`, `select`, `validate`, `render`, `apply`, include installation, local views, and host definition editing.
+- `storage`: JSON/file I/O, git sync, state persistence, managed-file writes, and host repo config writes.
 - `ssh_config`: low-level parse/build/render logic for managed SSH host blocks.
-- `runtime`: workspace discovery and `%{DATA_ROOT}` token handling.
-- `domain`: remote host models, local state models, SSH host value objects, result types, and project-specific errors.
+- `runtime`: workspace discovery and `%{WORKSPACE}` token handling.
+- `domain`: host definition models, local state models, SSH host value objects, result types, and project-specific errors.
 
 Dependency direction stays one-way:
 
@@ -27,13 +27,14 @@ Package `__init__.py` files stay intentionally thin and do not re-export interna
 Steady-state workflow:
 
 1. `init` creates a workspace skeleton from package resources
-2. `pull` clones or updates the remote repo locally
-3. `remote host ...` edits the local checkout `config.json`
-4. `select` / `deselect` mutate `state_path`
-5. `validate` checks manager config, remote repo config, state, and include presence
-6. `render` resolves state into desired `SSHHostConfig` objects and managed config text
-7. `apply` copies required keys, atomically replaces `managed_config_path`, then removes stale managed keys
-8. `install-include` explicitly wires the managed fragment into the main SSH config
+2. `repo init` optionally bootstraps a local-first host repo skeleton
+3. `repo sync` clones or updates the host repo locally
+4. `repo host ...` edits the host repo `config.json`
+5. `select` / `deselect` mutate `state_path`
+6. `validate` checks manager config, host repo config, state, and include presence
+7. `render` resolves state into desired `SSHHostConfig` objects and managed config text
+8. `apply` copies required keys, atomically replaces `managed_config_path`, then removes stale managed keys
+9. `install-include` explicitly wires the managed fragment into the main SSH config
 
 This keeps:
 

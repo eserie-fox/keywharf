@@ -8,7 +8,7 @@ from pathlib import Path
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.domain.errors import KeywharfError
 from keywharf.domain.models import (
-    RemoteHostDefinition,
+    HostDefinition,
     SSHAuthentication,
     SSHEndpoint,
     SSHExtraConfig,
@@ -27,15 +27,15 @@ def get_identity_file_path(
 @dataclass(slots=True)
 class SSHHostConfigChoice:
     manager_config: ResolvedManagerConfig
-    remote_host: RemoteHostDefinition
+    host_definition: HostDefinition
     endpoint_id: int = 0
     auth_id: int = 0
 
 
 def build_host_config(choice: SSHHostConfigChoice) -> SSHHostConfig:
-    host = choice.remote_host
+    host = choice.host_definition
     if not host.server_name:
-        raise KeywharfError("Remote host definition is missing ServerName")
+        raise KeywharfError("Host definition is missing ServerName")
     if not host.endpoints:
         raise KeywharfError(f"Config '{host.server_name}' has no endpoint options.")
     if not host.authentication:
@@ -55,7 +55,7 @@ def build_host_config(choice: SSHHostConfigChoice) -> SSHHostConfig:
     identity_target = None
     identity_source = None
     if auth.identity_file:
-        identity_source = choice.manager_config.resolve_from_local_repo(auth.identity_file).as_posix()
+        identity_source = choice.manager_config.resolve_from_host_repo(auth.identity_file).as_posix()
         identity_target = get_identity_file_path(
             choice.manager_config.managed_keys_dir,
             host.server_name,

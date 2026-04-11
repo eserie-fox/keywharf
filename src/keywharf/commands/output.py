@@ -10,8 +10,8 @@ from rich.console import Console
 from rich.table import Table
 
 from keywharf.domain.models import (
-    RemoteAuthenticationOption,
-    RemoteEndpointOption,
+    HostAuthenticationOption,
+    HostEndpointOption,
     SelectedHostState,
     SSHHostConfig,
 )
@@ -58,7 +58,7 @@ def selection_summary(selection: SelectedHostState | None) -> str:
     return ", ".join(parts)
 
 
-def render_endpoint_table(endpoints: list[RemoteEndpointOption]) -> Table:
+def render_endpoint_table(endpoints: list[HostEndpointOption]) -> Table:
     table = Table(show_header=True, header_style="bold")
     table.add_column("Name")
     table.add_column("HostName")
@@ -74,7 +74,7 @@ def render_endpoint_table(endpoints: list[RemoteEndpointOption]) -> Table:
     return table
 
 
-def render_auth_table(auths: list[RemoteAuthenticationOption]) -> Table:
+def render_auth_table(auths: list[HostAuthenticationOption]) -> Table:
     table = Table(show_header=True, header_style="bold")
     table.add_column("Name")
     table.add_column("User")
@@ -122,4 +122,3 @@ def emit_render_result(render_result: RenderResult, *, json_output: bool) -> Non
     if render_result.planned_key_deletes:
         typer.echo(f"Planned key deletions: {len(render_result.planned_key_deletes)}", err=True)
     typer.echo(render_result.content)
-

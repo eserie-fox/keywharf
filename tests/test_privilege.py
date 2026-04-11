@@ -9,8 +9,8 @@ from keywharf.cli import app
 from keywharf.commands._invocation import CommandInvocation
 from keywharf.commands._privilege import raise_for_missing_privileges
 from keywharf.domain.errors import PrivilegeRequiredError
-from keywharf.services.pull import analyze_pull_root_requirements
-from tests.support import make_data_root, write_manager_config
+from keywharf.services.repo_sync import analyze_host_repo_sync_root_requirements
+from tests.support import make_workspace, write_manager_config
 
 
 RUNNER = CliRunner()
@@ -56,29 +56,32 @@ def test_select_with_sudo_reexecs_full_command(monkeypatch: pytest.MonkeyPatch) 
     assert "demo" in captured["args"]
 
 
-def test_pull_analyzer_reports_unwritable_repo_parent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    data_root = make_data_root(tmp_path)
-    config_path = write_manager_config(data_root / "config.json")
+def test_repo_sync_analyzer_reports_unwritable_host_repo_parent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(
+        workspace_root / "config.json",
+        host_repo_remote_url="git@example.com:org/hosts.git",
+    )
     from tests.support import load_config
 
-    config = load_config(config_path, data_root=data_root)
-    monkeypatch.setattr("keywharf.services.pull.can_write_directory", lambda path: False)
-    monkeypatch.setattr("keywharf.services.pull.root_owned_hint", lambda path: "")
+    config = load_config(config_path, workspace_root=workspace_root)
+    monkeypatch.setattr("keywharf.services.repo_sync.can_write_directory", lambda path: False)
+    monkeypatch.setattr("keywharf.services.repo_sync.root_owned_hint", lambda path: "")
 
-    reasons = analyze_pull_root_requirements(config)
+    reasons = analyze_host_repo_sync_root_requirements(config)
 
     assert reasons
-    assert "local repo parent is not writable" in reasons[0]
+    assert "host repo parent is not writable" in reasons[0]
 
 
 def test_select_succeeds_without_sudo_in_normal_user_paths(tmp_path: Path) -> None:
-    from tests.support import remote_repo_payload, write_identity_file, write_remote_repo_config
+    from tests.support import host_repo_payload, write_host_repo_config, write_identity_file
 
-    data_root = make_data_root(tmp_path)
-    config_path = write_manager_config(data_root / "config.json")
-    repo_root = data_root / "repos" / "keys"
-    write_identity_file(repo_root)
-    write_remote_repo_config(repo_root, payload=remote_repo_payload(endpoint_name="public", auth_name="home"))
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    host_repo_path = workspace_root / "repos" / "hosts"
+    write_identity_file(host_repo_path)
+    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
 
     result = RUNNER.invoke(
         app,
@@ -86,4 +89,3 @@ def test_select_succeeds_without_sudo_in_normal_user_paths(tmp_path: Path) -> No
     )
 
     assert result.exit_code == 0, result.output
-

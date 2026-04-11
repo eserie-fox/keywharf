@@ -3,24 +3,42 @@
 ## Root Options
 
 - `--config <path>`: explicit manager config file
-- `--data-root <path>`: explicit workspace root
+- `--workspace <path>`: explicit workspace root
 - `--version`
 
-Use `--data-root` for the normal workspace layout. Use `--config` when the config file lives in a custom location under that workspace.
+Use `--workspace` for the normal workspace layout. Use `--config` when the config file lives in a custom location under that workspace.
 
 ## Recommended Workflow
 
+Create one named workspace:
+
 ```bash
-keywharf --data-root <path> init
-keywharf --data-root <path> pull
-keywharf --data-root <path> remote host list
-keywharf --data-root <path> remote host show <server>
-keywharf --data-root <path> remote host add <server> --hostname <host> --user <user> --identity-file <path>
-keywharf --data-root <path> select <server> --endpoint <name> --auth <name>
-keywharf --data-root <path> validate
-keywharf --data-root <path> render
-keywharf --data-root <path> apply
-keywharf --data-root <path> install-include
+keywharf init <workspace_name> [--directory <base_dir>]
+```
+
+If you already have a host repo remote URL:
+
+```bash
+# edit <path>/config.json and set host_repo_remote_url
+keywharf --workspace <path> repo sync
+keywharf --workspace <path> repo host list
+```
+
+If you are starting from scratch:
+
+```bash
+keywharf --workspace <path> repo init
+keywharf --workspace <path> repo host add <server> --hostname <host> --user <user> --identity-file <path>
+```
+
+Then continue with the normal selection/apply flow:
+
+```bash
+keywharf --workspace <path> select <server> --endpoint <name> --auth <name>
+keywharf --workspace <path> validate
+keywharf --workspace <path> render
+keywharf --workspace <path> apply
+keywharf --workspace <path> install-include
 ```
 
 ## Commands
@@ -28,12 +46,13 @@ keywharf --data-root <path> install-include
 | Command | Purpose | Writes |
 | --- | --- | --- |
 | `init` | create the workspace skeleton from package resources | yes |
-| `pull` | clone or update the remote repo checkout | yes |
-| `remote host list/show` | inspect local checkout host definitions | no |
-| `remote host add/update/remove` | structure-edit the local checkout `config.json` | yes |
-| `select` | upsert one desired selection into state | yes |
+| `repo init` | bootstrap a local-first host-repo skeleton | yes |
+| `repo sync` | clone or sync the configured host repo | yes |
+| `repo host list/show` | inspect host definitions in the host repo | no |
+| `repo host add/update/remove` | structure-edit the host repo `config.json` | yes |
+| `select` | upsert one desired selection from the host repo into state | yes |
 | `deselect` | remove one desired selection from state | yes |
-| `validate` | validate config, remote repo, state, and include warnings | no |
+| `validate` | validate config, host repo, state, and include warnings | no |
 | `render` | preview the desired managed SSH config | no |
 | `apply` | validate, render, copy keys, replace managed config | yes |
 | `local list/show` | inspect state versus current managed output | no |
@@ -46,11 +65,11 @@ Structured `--json` output is available on:
 - `validate`
 - `render`
 - `apply`
-- `remote host list`
-- `remote host show`
-- `remote host add`
-- `remote host update`
-- `remote host remove`
+- `repo host list`
+- `repo host show`
+- `repo host add`
+- `repo host update`
+- `repo host remove`
 - `local list`
 - `local show`
 
@@ -65,14 +84,15 @@ Structured `--json` output is available on:
 Mutating commands support `--sudo`:
 
 - `init`
-- `pull`
+- `repo init`
+- `repo sync`
 - `select`
 - `deselect`
 - `apply`
 - `install-include`
-- `remote host add`
-- `remote host update`
-- `remote host remove`
+- `repo host add`
+- `repo host update`
+- `repo host remove`
 
 Behavior:
 
@@ -86,5 +106,6 @@ Behavior:
 - `apply --dry-run` never writes files
 - `install-include --dry-run` never writes files
 - `apply` refuses to clear a non-empty managed config when state is empty unless `--allow-empty` is set
-- `remote host ...` edits only the local checkout config and never auto-pushes git changes
+- `repo host ...` edits only the host repo config and never auto-pushes git changes
+- `repo init` never runs `git init`, `git remote add`, `commit`, or `push`
 - normal commands do not rewrite the main SSH config

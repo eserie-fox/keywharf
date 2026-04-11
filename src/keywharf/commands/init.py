@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 
 from keywharf.commands._invocation import build_command_invocation
 from keywharf.commands._privilege import maybe_reexec_with_sudo, raise_for_missing_privileges
 from keywharf.commands.context import get_cli_state
+from keywharf.domain.errors import KeywharfError
 from keywharf.services.init import analyze_init_root_requirements, initialize_workspace
 
 
@@ -14,10 +17,15 @@ def register(app: typer.Typer) -> None:
     @app.command("init")
     def init_command(
         ctx: typer.Context,
-        ssh_key_remote_repo: str = typer.Option(
-            "git@example.com:org/keys.git",
-            "--ssh-key-remote-repo",
-            help="Remote repo URL placeholder written into the generated manager config.",
+        workspace_name: str = typer.Argument(..., help="Name of the new workspace directory."),
+        directory: Path = typer.Option(
+            Path("."),
+            "--directory",
+            help="Base directory under which the new workspace directory will be created.",
+            file_okay=False,
+            dir_okay=True,
+            exists=False,
+            readable=True,
         ),
         ssh_dir: str = typer.Option(
             "~/.ssh",
@@ -30,11 +38,19 @@ def register(app: typer.Typer) -> None:
             help="Re-exec the full command via sudo when root is required.",
         ),
     ) -> None:
-        """Create a minimal keywharf workspace."""
+        """Create a new named workspace directory."""
 
         cli_state = get_cli_state(ctx)
-        resolved_data_root = cli_state.data_root_override
-        invocation = build_command_invocation(ctx)
+        if cli_state.config_override is not None:
+            raise KeywharfError("`keywharf init` does not accept --config.", exit_code=2)
+        if cli_state.workspace_override is not None:
+            raise KeywharfError(
+                "`keywharf init` does not accept --workspace. Use `init <workspace_name> --directory <base_dir>`.",
+                exit_code=2,
+            )
+
+        base_dir = directory.expanduser().resolve()
+        invocation = build_command_invocation(ctx, overrides={"directory": base_dir})
         if maybe_reexec_with_sudo(
             operation="init",
             sudo_requested=sudo,
@@ -45,21 +61,28 @@ def register(app: typer.Typer) -> None:
         raise_for_missing_privileges(
             operation="init",
             reasons=analyze_init_root_requirements(
-                cli_state.config_override,
-                data_root=resolved_data_root,
-                ssh_key_remote_repo=ssh_key_remote_repo,
-                ssh_dir=ssh_dir,
+                workspace_name,
+                base_dir=base_dir,
             ),
             invocation=invocation,
             subject="the target workspace",
         )
 
         result = initialize_workspace(
-            cli_state.config_override,
-            data_root=resolved_data_root,
-            ssh_key_remote_repo=ssh_key_remote_repo,
+            workspace_name,
+            base_dir=base_dir,
             ssh_dir=ssh_dir,
         )
-        typer.echo(f"Initialized data root at {result.data_root}.")
-        typer.echo(f"Config: {result.config_path}")
-        typer.echo(f"State: {result.state_path}")
+        typer.echo(f"Created workspace: {result.workspace_root}")
+        typer.echo("Created paths:")
+        for path in result.created_paths:
+            typer.echo(f"- {path}")
+        typer.echo("")
+        typer.echo("Next steps:")
+        typer.echo("A. You already have a host repo remote URL:")
+        typer.echo(f"- Edit {result.config_path} and set host_repo_remote_url.")
+        typer.echo(f"- Run: keywharf --workspace {result.workspace_root} repo sync")
+        typer.echo("B. You are starting from scratch:")
+        typer.echo(f"- Run: keywharf --workspace {result.workspace_root} repo init")
+        typer.echo(f"- Then: keywharf --workspace {result.workspace_root} repo host add <server> --hostname <host> --user <user> --identity-file keys/<id_file>")
+        typer.echo("- git init / add remote / commit / push is up to you.")

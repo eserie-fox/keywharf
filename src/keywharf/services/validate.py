@@ -1,17 +1,18 @@
-"""Validation service for config, remote definitions, and local desired state."""
+"""Validation service for config, host definitions, and local desired state."""
 
 from __future__ import annotations
 
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.domain.results import ValidationResult
+from keywharf.services.host_definitions import (
+    load_host_definition_list,
+    load_host_definition_map,
+    validate_host_definitions,
+    validate_selection,
+)
+from keywharf.services.host_repo_setup import missing_host_repo_config_message
 from keywharf.services.install_include import detect_include
 from keywharf.services.managed_hosts import load_managed_hosts
-from keywharf.services.remote_hosts import (
-    load_remote_host_list,
-    load_remote_host_map,
-    validate_selection,
-    validate_remote_host_definitions,
-)
 from keywharf.storage.state_store import load_state
 
 
@@ -20,17 +21,12 @@ def validate_workspace(config: ResolvedManagerConfig) -> ValidationResult:
     warnings: list[str] = []
 
     try:
-        remote_hosts_list = load_remote_host_list(config)
+        host_definitions = load_host_definition_list(config)
     except FileNotFoundError:
-        return ValidationResult(
-            ok=False,
-            errors=[
-                "Remote repository config not found. Run 'keywharf pull' to clone or sync it first."
-            ],
-        )
+        return ValidationResult(ok=False, errors=[missing_host_repo_config_message(config)])
 
-    remote_validation = validate_remote_host_definitions(config, remote_hosts_list)
-    errors.extend(remote_validation.errors)
+    host_definition_validation = validate_host_definitions(config, host_definitions)
+    errors.extend(host_definition_validation.errors)
 
     try:
         state = load_state(config)
@@ -38,10 +34,10 @@ def validate_workspace(config: ResolvedManagerConfig) -> ValidationResult:
         errors.append(str(exc))
         state = None
 
-    remote_hosts_map = None
+    host_definition_map = None
     if not errors:
         try:
-            remote_hosts_map = load_remote_host_map(config)
+            host_definition_map = load_host_definition_map(config)
         except Exception as exc:
             errors.append(str(exc))
 
@@ -51,9 +47,9 @@ def validate_workspace(config: ResolvedManagerConfig) -> ValidationResult:
     except Exception as exc:
         errors.append(f"Current managed config could not be parsed: {exc}")
 
-    if state is not None and remote_hosts_map is not None:
+    if state is not None and host_definition_map is not None:
         for selection in state.selected_hosts:
-            errors.extend(validate_selection(remote_hosts_map, selection))
+            errors.extend(validate_selection(host_definition_map, selection))
 
     if not detect_include(config):
         warnings.append(

@@ -6,9 +6,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from keywharf.domain.models import (
-    RemoteAuthenticationOption,
-    RemoteEndpointOption,
-    RemoteHostDefinition,
+    HostAuthenticationOption,
+    HostDefinition,
+    HostEndpointOption,
     SSHHostConfig,
     SelectedHostState,
 )
@@ -35,10 +35,10 @@ class HostMutationResult:
 
 
 @dataclass(slots=True)
-class RemoteHostMutationResult:
+class HostDefinitionMutationResult:
     operation: str
     config_path: Path
-    host: RemoteHostDefinition | None = None
+    host: HostDefinition | None = None
     removed_name: str | None = None
     warnings: list[str] = field(default_factory=list)
     changed: bool = True
@@ -80,16 +80,16 @@ class ManagedKeyCopyPlan:
 @dataclass(slots=True)
 class ResolvedHostSelection:
     selection: SelectedHostState
-    remote_host: RemoteHostDefinition
-    endpoint: RemoteEndpointOption
-    authentication: RemoteAuthenticationOption
+    host_definition: HostDefinition
+    endpoint: HostEndpointOption
+    authentication: HostAuthenticationOption
     endpoint_index: int
     authentication_index: int
 
     def to_dict(self) -> dict[str, object]:
         return {
             "selection": self.selection.to_dict(),
-            "remote_host": self.remote_host.to_dict(),
+            "host_definition": self.host_definition.to_dict(),
             "endpoint": self.endpoint.to_dict(),
             "authentication": self.authentication.to_dict(),
             "endpoint_index": self.endpoint_index,
@@ -171,17 +171,29 @@ class LocalHostStatus:
 
 @dataclass(slots=True)
 class InitResult:
-    data_root: Path
+    workspace_root: Path
     config_path: Path
     state_path: Path
     created_paths: list[Path] = field(default_factory=list)
-    preserved_paths: list[Path] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, object]:
         return {
-            "data_root": self.data_root.as_posix(),
+            "workspace_root": self.workspace_root.as_posix(),
             "config_path": self.config_path.as_posix(),
             "state_path": self.state_path.as_posix(),
             "created_paths": [item.as_posix() for item in self.created_paths],
-            "preserved_paths": [item.as_posix() for item in self.preserved_paths],
+        }
+
+
+@dataclass(slots=True)
+class HostRepoInitResult:
+    host_repo_path: Path
+    config_path: Path
+    created_paths: list[Path] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "host_repo_path": self.host_repo_path.as_posix(),
+            "config_path": self.config_path.as_posix(),
+            "created_paths": [item.as_posix() for item in self.created_paths],
         }

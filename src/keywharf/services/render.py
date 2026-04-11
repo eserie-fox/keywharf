@@ -8,11 +8,11 @@ from pathlib import Path
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.domain.errors import KeywharfError
 from keywharf.domain.results import ManagedKeyCopyPlan, RenderResult
-from keywharf.services.managed_hosts import load_managed_hosts
-from keywharf.services.remote_hosts import (
-    build_remote_host_config_from_selection,
-    load_remote_host_map,
+from keywharf.services.host_definitions import (
+    build_host_config_from_selection,
+    load_host_definition_map,
 )
+from keywharf.services.managed_hosts import load_managed_hosts
 from keywharf.services.managed_config_renderer import render_managed_config
 from keywharf.services.validate import validate_workspace
 from keywharf.storage.ssh_files import list_managed_key_files
@@ -25,7 +25,7 @@ def render_selected_state(config: ResolvedManagerConfig) -> RenderResult:
         raise KeywharfError("\n".join(validation.errors))
 
     state = load_state(config)
-    remote_hosts = load_remote_host_map(config)
+    host_definitions = load_host_definition_map(config)
     current_hosts = load_managed_hosts(config)
 
     resolved_selections = []
@@ -34,9 +34,9 @@ def render_selected_state(config: ResolvedManagerConfig) -> RenderResult:
     desired_key_targets: set[Path] = set()
 
     for selection in state.selected_hosts:
-        resolved, host = build_remote_host_config_from_selection(
+        resolved, host = build_host_config_from_selection(
             config,
-            remote_hosts,
+            host_definitions,
             selection,
         )
         resolved_selections.append(resolved)

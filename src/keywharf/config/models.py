@@ -19,16 +19,15 @@ class ManagerConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    ssh_key_remote_repo: str
-    ssh_key_local_repo: str
+    host_repo_remote_url: str | None
+    host_repo_path: str
     ssh_dir: str
     managed_config_path: str | None
     managed_keys_dir: str | None
     state_path: str
 
     @field_validator(
-        "ssh_key_remote_repo",
-        "ssh_key_local_repo",
+        "host_repo_path",
         "ssh_dir",
         "state_path",
     )
@@ -39,7 +38,7 @@ class ManagerConfig(BaseModel):
             raise ValueError("value must not be blank")
         return text
 
-    @field_validator("managed_config_path", "managed_keys_dir")
+    @field_validator("host_repo_remote_url", "managed_config_path", "managed_keys_dir")
     @classmethod
     def _validate_optional_strings(cls, value: str | None) -> str | None:
         if value is None:

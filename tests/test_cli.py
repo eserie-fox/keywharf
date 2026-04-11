@@ -13,9 +13,9 @@ def test_root_help_shows_final_command_set() -> None:
     result = RUNNER.invoke(app, [])
 
     assert result.exit_code == 0
-    assert "--data-root" in result.output
+    assert "--workspace" in result.output
     assert "init" in result.output
-    assert "pull" in result.output
+    assert "repo" in result.output
     assert "validate" in result.output
     assert "render" in result.output
     assert "apply" in result.output
@@ -23,7 +23,8 @@ def test_root_help_shows_final_command_set() -> None:
     assert "select" in result.output
     assert "deselect" in result.output
     assert "local" in result.output
-    assert "remote" in result.output
+    assert "pull" not in result.output
+    assert "remote" not in result.output
 
 
 def test_version_option_returns_single_source_version() -> None:
@@ -49,9 +50,25 @@ def test_local_group_without_subcommand_shows_help() -> None:
     assert "show" in result.output
 
 
-def test_remote_group_without_subcommand_shows_help() -> None:
-    result = RUNNER.invoke(app, ["remote"])
+def test_repo_group_without_subcommand_shows_help() -> None:
+    result = RUNNER.invoke(app, ["repo"])
 
     assert result.exit_code == 0
-    assert "local checkout of the remote host repository" in result.output
+    assert "workspace host repo" in result.output
+    assert "init" in result.output
+    assert "sync" in result.output
     assert "host" in result.output
+
+
+def test_init_without_required_workspace_name_reports_missing_argument() -> None:
+    result = RUNNER.invoke(app, ["init"])
+
+    assert result.exit_code != 0
+    assert "Missing argument" in result.output
+
+
+def test_removed_public_commands_and_options_are_absent() -> None:
+    for argv in (["pull"], ["remote"], ["--data-root", "/tmp/demo", "validate"]):
+        result = RUNNER.invoke(app, argv)
+        assert result.exit_code != 0
+        assert "No such" in result.output or "No such option" in result.output

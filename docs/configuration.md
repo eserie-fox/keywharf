@@ -2,25 +2,22 @@
 
 ## Workspace Discovery
 
-`keywharf` uses one canonical workspace name only:
-
-- environment variable: `KEYWHARF_DATA_ROOT`
-- marker file: `KEYWHARF_DATA_ROOT`
-
 Discovery order:
 
-1. explicit `--data-root`
-2. `KEYWHARF_DATA_ROOT`
-3. current directory, if it already contains both the marker and `config.json`
-4. nearest ancestor directory with a usable marker/config pair
-5. fixed home candidate `~/keywharf`
-6. fail with a message listing the attempted candidates
+1. explicit `--workspace`
+2. `KEYWHARF_WORKSPACE`
+3. search `cwd`, each ancestor, then `~`
+4. for each base directory: scan one level of child directories first
+5. then check the base directory itself
+6. the first directory containing `KEYWHARF_WORKSPACE` wins
+7. fail with a message listing the checked directories
 
 The discovery path is strict on purpose:
 
-- no recursive home scanning
-- no fuzzy directory guessing
+- no recursive child scanning
+- no fixed home workspace fallback
 - no alias env vars or alias markers
+- marker presence decides the workspace root; missing `config.json` is a later config-load error
 
 ## Formal Manager Config
 
@@ -48,8 +45,8 @@ Deep-merge contract:
 
 Fields:
 
-- `ssh_key_remote_repo`
-- `ssh_key_local_repo`
+- `host_repo_remote_url`
+- `host_repo_path`
 - `ssh_dir`
 - `managed_config_path`
 - `managed_keys_dir`
@@ -59,12 +56,12 @@ Defaults resource:
 
 ```json
 {
-  "ssh_key_remote_repo": "git@example.com:org/keys.git",
-  "ssh_key_local_repo": "%{DATA_ROOT}/repos/keys",
+  "host_repo_remote_url": null,
+  "host_repo_path": "%{WORKSPACE}/repos/hosts",
   "ssh_dir": "~/.ssh",
   "managed_config_path": null,
   "managed_keys_dir": null,
-  "state_path": "%{DATA_ROOT}/state/state.json"
+  "state_path": "%{WORKSPACE}/state/state.json"
 }
 ```
 
@@ -80,12 +77,12 @@ Raw config is not resolved during load/merge/validate.
 
 Runtime resolution happens in `resolve_manager_config(...)`:
 
-- `%{DATA_ROOT}` expands to the resolved workspace root
+- `%{WORKSPACE}` expands to the resolved workspace root
 - `~` expands to home
 - environment variables expand
 - relative paths resolve from the manager config directory
 
-If both `--data-root` and an absolute `--config` path are supplied, the absolute config must live under the chosen data root.
+If both `--workspace` and an absolute `--config` path are supplied, the absolute config must live under the chosen workspace root.
 
 ## State File
 
@@ -113,26 +110,32 @@ Rules:
 - `endpoint_name` may be `null` only for a singleton endpoint set
 - `authentication_name` may be `null` only for a singleton authentication set
 
-## Remote Repo Config
+## Host Repo Config
 
-The local checkout still uses `config.json` in the repo root.
+The host repo still uses `config.json` in the repo root.
 
 Validation rules:
 
 - `ServerName` must be present and unique
 - if a host has multiple endpoints, each endpoint needs a unique `EndPointName`
 - if a host has multiple authentication options, each authentication needs a unique `AuthenticationName`
-- referenced identity files must exist in the local repo checkout
-- state selectors must resolve uniquely against the current remote repo
+- referenced identity files must exist in the host repo
+- state selectors must resolve uniquely against the current host repo
 
-`remote host add/update/remove` edit only this local checkout file. They do not commit or push.
+`repo init` bootstraps a local-first repo skeleton with:
+
+- empty `config.json`
+- `keys/`
+- `.gitignore`
+
+`repo host add/update/remove` edit only this host repo file. They do not commit, push, or initialize git.
 
 Current edit boundary:
 
 - Host-level CRUD only
 - one new host is created with one endpoint and one authentication entry
 - `ExtraConfig` is preserved but not exposed as CLI CRUD yet
-- when a host has multiple endpoint/auth options, `remote host update` requires `--target-endpoint` / `--target-auth`
+- when a host has multiple endpoint/auth options, `repo host update` requires `--target-endpoint` / `--target-auth`
 
 ## Managed Output
 

@@ -1,4 +1,4 @@
-"""Structured editing of remote host definitions in the local repo checkout."""
+"""Structured editing of host definitions in the host repo."""
 
 from __future__ import annotations
 
@@ -7,29 +7,33 @@ from copy import deepcopy
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.domain.errors import KeywharfError
 from keywharf.domain.models import (
-    RemoteAuthenticationOption,
-    RemoteEndpointOption,
-    RemoteHostDefinition,
+    HostAuthenticationOption,
+    HostDefinition,
+    HostEndpointOption,
 )
-from keywharf.domain.results import RemoteHostMutationResult
+from keywharf.domain.results import HostDefinitionMutationResult
+from keywharf.services.host_definitions import (
+    load_host_definition_list,
+    validate_host_definitions,
+)
+from keywharf.services.host_repo_setup import missing_host_repo_config_message
 from keywharf.services.privilege import can_read_path, can_write_file, root_owned_hint
-from keywharf.services.remote_hosts import load_remote_host_list, validate_remote_host_definitions
-from keywharf.storage.remote_repo import remote_repo_config_path, write_remote_repo_entries
+from keywharf.storage.host_repo import host_repo_config_path, write_host_repo_entries
 from keywharf.storage.state_store import load_state
 
 
-def list_remote_hosts(config: ResolvedManagerConfig) -> list[RemoteHostDefinition]:
-    return _load_hosts_or_raise(config)
+def list_host_definitions(config: ResolvedManagerConfig) -> list[HostDefinition]:
+    return _load_host_definitions_or_raise(config)
 
 
-def get_remote_host(config: ResolvedManagerConfig, server_name: str) -> RemoteHostDefinition:
-    for host in _load_hosts_or_raise(config):
-        if host.server_name == server_name:
-            return host
-    raise KeywharfError(f"Remote host '{server_name}' not found.")
+def get_host_definition(config: ResolvedManagerConfig, server_name: str) -> HostDefinition:
+    for host_definition in _load_host_definitions_or_raise(config):
+        if host_definition.server_name == server_name:
+            return host_definition
+    raise KeywharfError(f"Host '{server_name}' not found in the host repo.")
 
 
-def add_remote_host(
+def add_host_definition(
     config: ResolvedManagerConfig,
     *,
     server_name: str,
@@ -40,39 +44,39 @@ def add_remote_host(
     comment: str | None = None,
     endpoint_name: str | None = None,
     auth_name: str | None = None,
-) -> RemoteHostMutationResult:
-    hosts = _load_hosts_or_raise(config)
-    if any(host.server_name == server_name for host in hosts):
-        raise KeywharfError(f"Remote host '{server_name}' already exists.")
+) -> HostDefinitionMutationResult:
+    host_definitions = _load_host_definitions_or_raise(config)
+    if any(host.server_name == server_name for host in host_definitions):
+        raise KeywharfError(f"Host '{server_name}' already exists in the host repo.")
 
-    new_host = RemoteHostDefinition(
+    new_host = HostDefinition(
         server_name=_clean_required(server_name, label="server name"),
         comment=_clean_optional(comment),
         endpoints=[
-            RemoteEndpointOption(
+            HostEndpointOption(
                 name=_clean_optional(endpoint_name),
                 hostname=_clean_required(hostname, label="hostname"),
                 port=port,
             )
         ],
         authentication=[
-            RemoteAuthenticationOption(
+            HostAuthenticationOption(
                 name=_clean_optional(auth_name),
                 user=_clean_required(user, label="user"),
                 identity_file=_clean_required(identity_file, label="identity file"),
             )
         ],
     )
-    updated_hosts = [*hosts, new_host]
-    _persist_remote_hosts(config, updated_hosts)
-    return RemoteHostMutationResult(
+    updated_hosts = [*host_definitions, new_host]
+    _persist_host_definitions(config, updated_hosts)
+    return HostDefinitionMutationResult(
         operation="add",
-        config_path=remote_repo_config_path(config),
+        config_path=host_repo_config_path(config),
         host=new_host,
     )
 
 
-def update_remote_host(
+def update_host_definition(
     config: ResolvedManagerConfig,
     *,
     server_name: str,
@@ -86,9 +90,9 @@ def update_remote_host(
     auth_name: str | None = None,
     target_endpoint: str | None = None,
     target_auth: str | None = None,
-) -> RemoteHostMutationResult:
-    hosts = _load_hosts_or_raise(config)
-    index, current = _find_host_index(hosts, server_name)
+) -> HostDefinitionMutationResult:
+    host_definitions = _load_host_definitions_or_raise(config)
+    index, current = _find_host_index(host_definitions, server_name)
     updated = deepcopy(current)
 
     old_server_name = current.server_name
@@ -127,18 +131,18 @@ def update_remote_host(
         new_auth_resolved_name = auth.name
 
     if updated.to_dict() == current.to_dict():
-        return RemoteHostMutationResult(
+        return HostDefinitionMutationResult(
             operation="update",
-            config_path=remote_repo_config_path(config),
+            config_path=host_repo_config_path(config),
             host=current,
             changed=False,
         )
 
-    hosts[index] = updated
-    _persist_remote_hosts(config, hosts)
-    return RemoteHostMutationResult(
+    host_definitions[index] = updated
+    _persist_host_definitions(config, host_definitions)
+    return HostDefinitionMutationResult(
         operation="update",
-        config_path=remote_repo_config_path(config),
+        config_path=host_repo_config_path(config),
         host=updated,
         warnings=_selection_warnings(
             config,
@@ -152,78 +156,75 @@ def update_remote_host(
     )
 
 
-def remove_remote_host(
+def remove_host_definition(
     config: ResolvedManagerConfig,
     *,
     server_name: str,
-) -> RemoteHostMutationResult:
-    hosts = _load_hosts_or_raise(config)
-    index, removed = _find_host_index(hosts, server_name)
-    del hosts[index]
-    _persist_remote_hosts(config, hosts)
-    return RemoteHostMutationResult(
+) -> HostDefinitionMutationResult:
+    host_definitions = _load_host_definitions_or_raise(config)
+    index, removed = _find_host_index(host_definitions, server_name)
+    del host_definitions[index]
+    _persist_host_definitions(config, host_definitions)
+    return HostDefinitionMutationResult(
         operation="remove",
-        config_path=remote_repo_config_path(config),
+        config_path=host_repo_config_path(config),
         host=removed,
         removed_name=server_name,
         warnings=_selection_warnings(config, removed_server_name=server_name),
     )
 
 
-def analyze_remote_host_write_root_requirements(config: ResolvedManagerConfig) -> list[str]:
-    """Return concrete privilege reasons for mutating the local remote config."""
+def analyze_host_definition_write_root_requirements(config: ResolvedManagerConfig) -> list[str]:
+    """Return concrete privilege reasons for mutating the host repo config."""
 
-    config_path = remote_repo_config_path(config)
+    config_path = host_repo_config_path(config)
     reasons: list[str] = []
     if config_path.exists() and not can_read_path(config_path):
         reasons.append(
-            f"remote repository config is not readable by current user: {config_path}{root_owned_hint(config_path)}"
+            f"host repo config is not readable by current user: {config_path}{root_owned_hint(config_path)}"
         )
     if not can_write_file(config_path):
         reasons.append(
-            f"remote repository config path is not writable by current user: {config_path}{root_owned_hint(config_path.parent)}"
+            f"host repo config path is not writable by current user: {config_path}{root_owned_hint(config_path.parent)}"
         )
     return reasons
 
 
-def _load_hosts_or_raise(config: ResolvedManagerConfig) -> list[RemoteHostDefinition]:
+def _load_host_definitions_or_raise(config: ResolvedManagerConfig) -> list[HostDefinition]:
     try:
-        return load_remote_host_list(config)
+        return load_host_definition_list(config)
     except FileNotFoundError as exc:
-        raise KeywharfError(
-            "Remote repository config not found. Run 'keywharf pull' to clone or sync it first.",
-            exit_code=2,
-        ) from exc
+        raise KeywharfError(missing_host_repo_config_message(config), exit_code=2) from exc
 
 
-def _persist_remote_hosts(
+def _persist_host_definitions(
     config: ResolvedManagerConfig,
-    hosts: list[RemoteHostDefinition],
+    host_definitions: list[HostDefinition],
 ) -> None:
-    validation = validate_remote_host_definitions(config, hosts)
-    errors = [error for error in validation.errors if error != "Remote repository config is empty."]
+    validation = validate_host_definitions(config, host_definitions)
+    errors = [error for error in validation.errors if error != "Host repo config is empty."]
     if errors:
         raise KeywharfError("\n".join(errors))
-    write_remote_repo_entries(config, [host.to_dict() for host in hosts])
+    write_host_repo_entries(config, [host.to_dict() for host in host_definitions])
 
 
 def _find_host_index(
-    hosts: list[RemoteHostDefinition],
+    host_definitions: list[HostDefinition],
     server_name: str,
-) -> tuple[int, RemoteHostDefinition]:
-    for index, host in enumerate(hosts):
-        if host.server_name == server_name:
-            return index, host
-    raise KeywharfError(f"Remote host '{server_name}' not found.")
+) -> tuple[int, HostDefinition]:
+    for index, host_definition in enumerate(host_definitions):
+        if host_definition.server_name == server_name:
+            return index, host_definition
+    raise KeywharfError(f"Host '{server_name}' not found in the host repo.")
 
 
 def _resolve_target_endpoint(
-    host: RemoteHostDefinition,
+    host_definition: HostDefinition,
     server_name: str,
     target_name: str | None,
 ) -> int:
     return _resolve_named_target(
-        host.endpoints,
+        host_definition.endpoints,
         server_name=server_name,
         target_name=target_name,
         label="endpoint",
@@ -232,12 +233,12 @@ def _resolve_target_endpoint(
 
 
 def _resolve_target_auth(
-    host: RemoteHostDefinition,
+    host_definition: HostDefinition,
     server_name: str,
     target_name: str | None,
 ) -> int:
     return _resolve_named_target(
-        host.authentication,
+        host_definition.authentication,
         server_name=server_name,
         target_name=target_name,
         label="authentication",
@@ -246,7 +247,7 @@ def _resolve_target_auth(
 
 
 def _resolve_named_target(
-    options: list[RemoteEndpointOption] | list[RemoteAuthenticationOption],
+    options: list[HostEndpointOption] | list[HostAuthenticationOption],
     *,
     server_name: str,
     target_name: str | None,
@@ -254,19 +255,17 @@ def _resolve_named_target(
     option_name: str,
 ) -> int:
     if not options:
-        raise KeywharfError(f"Remote host '{server_name}' has no {label} options.")
+        raise KeywharfError(f"Host '{server_name}' has no {label} options.")
     if target_name is None:
         if len(options) == 1:
             return 0
         raise KeywharfError(
-            f"Remote host '{server_name}' has multiple {label} options. Pass {option_name}."
+            f"Host '{server_name}' has multiple {label} options. Pass {option_name}."
         )
     for index, option in enumerate(options):
         if option.name == target_name:
             return index
-    raise KeywharfError(
-        f"Remote host '{server_name}' has no {label} named '{target_name}'."
-    )
+    raise KeywharfError(f"Host '{server_name}' has no {label} named '{target_name}'.")
 
 
 def _selection_warnings(
@@ -298,7 +297,7 @@ def _selection_warnings(
             and selection.server_name == old_server_name
         ):
             warnings.append(
-                f"Local state still refers to remote host '{old_server_name}'. Run 'keywharf validate' and update the selection."
+                f"Local state still refers to host '{old_server_name}'. Run 'keywharf validate' and update the selection."
             )
         if (
             old_server_name is not None

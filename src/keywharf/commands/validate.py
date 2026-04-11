@@ -15,7 +15,6 @@ def register(app: typer.Typer) -> None:
         ctx: typer.Context,
         json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
     ) -> None:
-        """Validate config, remote definitions, and local state."""
+        """Validate config, host definitions, and local state."""
 
         emit_validation_result(validate_workspace(get_manager_config(ctx)), json_output=json_output)
-

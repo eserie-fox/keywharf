@@ -6,13 +6,13 @@ from typer.testing import CliRunner
 
 from keywharf.cli import app
 from tests.support import (
+    host_repo_payload,
     load_config,
-    make_data_root,
+    make_workspace,
     read_json,
-    remote_repo_payload,
     write_identity_file,
     write_manager_config,
-    write_remote_repo_config,
+    write_host_repo_config,
 )
 
 
@@ -20,15 +20,15 @@ RUNNER = CliRunner()
 
 
 def test_select_writes_state_and_upserts_existing_selection(tmp_path: Path) -> None:
-    data_root = make_data_root(tmp_path)
-    config_path = write_manager_config(data_root / "config.json")
-    config = load_config(config_path, data_root=data_root)
-    repo_root = data_root / "repos" / "keys"
-    write_identity_file(repo_root, "keys/id_home")
-    write_identity_file(repo_root, "keys/id_work")
-    write_remote_repo_config(
-        repo_root,
-        payload=remote_repo_payload(
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    host_repo_path = config.host_repo_path
+    write_identity_file(host_repo_path, "keys/id_home")
+    write_identity_file(host_repo_path, "keys/id_work")
+    write_host_repo_config(
+        host_repo_path,
+        payload=host_repo_payload(
             endpoints=[
                 {"EndPointName": "public", "HostName": "public.example.com", "Port": 22},
                 {"EndPointName": "private", "HostName": "private.example.com", "Port": 22},
@@ -62,12 +62,12 @@ def test_select_writes_state_and_upserts_existing_selection(tmp_path: Path) -> N
 
 
 def test_deselect_only_updates_state(tmp_path: Path) -> None:
-    data_root = make_data_root(tmp_path)
-    config_path = write_manager_config(data_root / "config.json")
-    config = load_config(config_path, data_root=data_root)
-    repo_root = data_root / "repos" / "keys"
-    write_identity_file(repo_root)
-    write_remote_repo_config(repo_root, payload=remote_repo_payload(endpoint_name="public", auth_name="home"))
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    host_repo_path = config.host_repo_path
+    write_identity_file(host_repo_path)
+    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
     RUNNER.invoke(
         app,
         ["--config", str(config_path), "select", "demo", "--endpoint", "public", "--auth", "home"],
@@ -81,15 +81,15 @@ def test_deselect_only_updates_state(tmp_path: Path) -> None:
 
 
 def test_select_uses_stable_names_not_array_indexes(tmp_path: Path) -> None:
-    data_root = make_data_root(tmp_path)
-    config_path = write_manager_config(data_root / "config.json")
-    config = load_config(config_path, data_root=data_root)
-    repo_root = data_root / "repos" / "keys"
-    write_identity_file(repo_root, "keys/id_home")
-    write_identity_file(repo_root, "keys/id_work")
-    write_remote_repo_config(
-        repo_root,
-        payload=remote_repo_payload(
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    host_repo_path = config.host_repo_path
+    write_identity_file(host_repo_path, "keys/id_home")
+    write_identity_file(host_repo_path, "keys/id_work")
+    write_host_repo_config(
+        host_repo_path,
+        payload=host_repo_payload(
             endpoints=[
                 {"EndPointName": "public", "HostName": "public.example.com", "Port": 22},
                 {"EndPointName": "private", "HostName": "private.example.com", "Port": 22},
@@ -112,4 +112,3 @@ def test_select_uses_stable_names_not_array_indexes(tmp_path: Path) -> None:
         "endpoint_name": "private",
         "authentication_name": "work",
     }
-

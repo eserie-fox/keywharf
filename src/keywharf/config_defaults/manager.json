@@ -1,8 +1,8 @@
 {
-  "ssh_key_remote_repo": "git@example.com:org/keys.git",
-  "ssh_key_local_repo": "%{DATA_ROOT}/repos/keys",
+  "host_repo_remote_url": null,
+  "host_repo_path": "%{WORKSPACE}/repos/hosts",
   "ssh_dir": "~/.ssh",
   "managed_config_path": null,
   "managed_keys_dir": null,
-  "state_path": "%{DATA_ROOT}/state/state.json"
+  "state_path": "%{WORKSPACE}/state/state.json"
 }

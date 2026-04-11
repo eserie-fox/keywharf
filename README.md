@@ -1,6 +1,6 @@
 # keywharf
 
-`keywharf` is a Python 3.11+ CLI for selecting remote SSH host definitions into a local desired state, then materializing only manager-owned SSH artifacts.
+`keywharf` is a Python 3.11+ CLI for selecting SSH host definitions from a host repo into a local desired state, then materializing only manager-owned SSH artifacts.
 
 It manages only:
 
@@ -12,20 +12,39 @@ It does not take over the user's whole `~/.ssh/config`. Only `install-include` m
 
 ## Recommended Workflow
 
+Create one named workspace:
+
 ```bash
-keywharf --data-root ~/keywharf init
-keywharf --data-root ~/keywharf pull
-keywharf --data-root ~/keywharf remote host list
-keywharf --data-root ~/keywharf remote host show demo
-keywharf --data-root ~/keywharf remote host add demo --hostname demo.example.com --user fox --identity-file keys/id_demo
-keywharf --data-root ~/keywharf select demo --endpoint public --auth home
-keywharf --data-root ~/keywharf validate
-keywharf --data-root ~/keywharf render
-keywharf --data-root ~/keywharf apply
-keywharf --data-root ~/keywharf install-include
+keywharf init demo --directory ~
 ```
 
-If the manager config lives outside the default workspace root, use `--config <path>` instead of `--data-root`.
+If you already have a host repo remote URL:
+
+```bash
+# edit ~/demo/config.json and set host_repo_remote_url
+keywharf --workspace ~/demo repo sync
+keywharf --workspace ~/demo repo host list
+keywharf --workspace ~/demo repo host show demo
+```
+
+If you are starting from scratch:
+
+```bash
+keywharf --workspace ~/demo repo init
+keywharf --workspace ~/demo repo host add demo --hostname demo.example.com --user fox --identity-file keys/id_demo
+```
+
+Then continue with normal selection and apply flow:
+
+```bash
+keywharf --workspace ~/demo select demo --endpoint public --auth home
+keywharf --workspace ~/demo validate
+keywharf --workspace ~/demo render
+keywharf --workspace ~/demo apply
+keywharf --workspace ~/demo install-include
+```
+
+If the manager config lives outside the default workspace root, use `--config <path>` instead of `--workspace`.
 
 ## Ownership Boundary
 
@@ -46,14 +65,14 @@ If the manager config lives outside the default workspace root, use `--config <p
 
 Workspace resolution is explicit and predictable:
 
-1. `--data-root`
-2. `KEYWHARF_DATA_ROOT`
-3. current directory, if it already contains both the `KEYWHARF_DATA_ROOT` marker and `config.json`
-4. nearest ancestor workspace marker
-5. `~/keywharf`
-6. fail with the checked candidate paths listed
+1. `--workspace`
+2. `KEYWHARF_WORKSPACE`
+3. auto-search `pwd`, each ancestor, then `~`
+4. for each base directory: scan one level of child directories first, then the base directory itself
+5. the first directory containing `KEYWHARF_WORKSPACE` wins
+6. fail fast with the checked candidate paths listed
 
-`keywharf init` creates the marker, `config.json`, `state/state.json`, directory skeleton, and small workspace text files from package resources.
+`keywharf init <workspace_name>` creates the marker, `config.json`, `state/state.json`, `repos/`, and small workspace text files from package resources. It does not touch `~/.ssh` and does not initialize a git repo for you.
 
 ## Formal Config And Templates
 
@@ -70,17 +89,23 @@ Resource roles are intentionally split:
 - `templates/*.json`: structured starter data such as the empty state file
 - `templates/*.j2`: human-facing text templates such as workspace `README.md`, workspace `.gitignore`, and the include block text
 
-## Remote Host CRUD
+## Host Repo CRUD
 
-`remote host` edits only the local checkout copy of the remote repository config:
+`repo init` bootstraps a local-first host repo skeleton:
 
-- `remote host list`
-- `remote host show`
-- `remote host add`
-- `remote host update`
-- `remote host remove`
+- empty `config.json`
+- `keys/`
+- `.gitignore`
 
-These commands do not commit, push, or mutate git metadata. They perform structured JSON reads/writes, preserve array order, and revalidate the resulting host set before writing.
+`repo host` edits only the host repo `config.json`:
+
+- `repo host list`
+- `repo host show`
+- `repo host add`
+- `repo host update`
+- `repo host remove`
+
+These commands do not commit, push, run `git init`, or mutate git metadata. They perform structured JSON reads/writes, preserve array order, and revalidate the resulting host set before writing.
 
 This round only adds Host-level CRUD. `ExtraConfig` is preserved and rendered, but it is not exposed as a CLI editor yet.
 
@@ -89,14 +114,15 @@ This round only adds Host-level CRUD. `ExtraConfig` is preserved and rendered, b
 Mutating commands support `--sudo`:
 
 - `init`
-- `pull`
+- `repo init`
+- `repo sync`
 - `select`
 - `deselect`
 - `apply`
 - `install-include`
-- `remote host add`
-- `remote host update`
-- `remote host remove`
+- `repo host add`
+- `repo host update`
+- `repo host remove`
 
 Privilege handling is centralized:
 

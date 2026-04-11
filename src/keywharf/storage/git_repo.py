@@ -8,57 +8,61 @@ import subprocess
 from pathlib import Path
 
 from keywharf.domain.errors import KeywharfError
+from keywharf.storage.host_repo import HOST_REPO_CONFIG_FILENAME
 
 
-def _build_git_environment(remote_repo: str) -> dict[str, str]:
+def _build_git_environment(remote_url: str) -> dict[str, str]:
     env = {
         **os.environ,
         "GIT_TERMINAL_PROMPT": "0",
         "GIT_ASKPASS": "echo",
     }
-    if remote_repo.startswith("git@") or remote_repo.startswith("ssh://"):
+    if remote_url.startswith("git@") or remote_url.startswith("ssh://"):
         env["GIT_SSH_COMMAND"] = "ssh -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
     return env
 
 
-def clone_or_pull_repository(remote_repo: str, local_repo: Path) -> None:
+def clone_or_sync_repository(remote_url: str, local_path: Path) -> None:
     if shutil.which("git") is None:
         raise KeywharfError("git is not available in PATH.")
 
-    env = _build_git_environment(remote_repo)
+    env = _build_git_environment(remote_url)
 
-    if local_repo.exists():
-        if not local_repo.is_dir():
-            raise KeywharfError(f"Local repo path exists but is not a directory: {local_repo}")
-        if not (local_repo / ".git").exists():
-            if any(local_repo.iterdir()):
-                raise KeywharfError(
-                    f"Local repo path exists but is not a git repository: {local_repo}"
+    if local_path.exists():
+        if not local_path.is_dir():
+            raise KeywharfError(f"Host repo path exists but is not a directory: {local_path}")
+        if not (local_path / ".git").exists():
+            bootstrap_hint = ""
+            if (local_path / HOST_REPO_CONFIG_FILENAME).exists():
+                bootstrap_hint = (
+                    " This looks like a local-first bootstrap created by "
+                    "'keywharf repo init'. Initialize git and add a remote yourself, "
+                    "or remove this directory before running 'keywharf repo sync'."
                 )
-            shutil.rmtree(local_repo)
-            _run_git(["clone", remote_repo, str(local_repo)], env=env, action="clone remote repo")
-            return
+            raise KeywharfError(
+                f"Host repo path exists but is not a git repository: {local_path}.{bootstrap_hint}"
+            )
 
         current_url = _run_git(
             ["remote", "get-url", "origin"],
-            cwd=local_repo,
+            cwd=local_path,
             env=env,
             action="read git remote",
         ).strip()
-        if current_url != remote_repo:
+        if current_url != remote_url:
             raise KeywharfError(
-                f"Mismatch repo url, local path {local_repo} url={current_url}, remote url={remote_repo}"
+                f"Host repo remote URL mismatch for {local_path}: origin={current_url}, configured={remote_url}"
             )
         _run_git(
             ["pull", "--ff-only", "origin"],
-            cwd=local_repo,
+            cwd=local_path,
             env=env,
-            action="pull remote repo",
+            action="sync host repo",
         )
         return
 
-    local_repo.parent.mkdir(parents=True, exist_ok=True)
-    _run_git(["clone", remote_repo, str(local_repo)], env=env, action="clone remote repo")
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    _run_git(["clone", remote_url, str(local_path)], env=env, action="clone host repo")
 
 
 def _run_git(

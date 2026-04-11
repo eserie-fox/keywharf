@@ -111,14 +111,14 @@ class LocalState:
 
 
 @dataclass(slots=True)
-class RemoteEndpointOption:
+class HostEndpointOption:
     name: str | None = None
     hostname: str | None = None
     port: int | None = None
     comment: str | None = None
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "RemoteEndpointOption":
+    def from_dict(cls, payload: dict[str, Any]) -> "HostEndpointOption":
         return cls(
             name=_clean_string(payload.get("EndPointName")),
             hostname=_clean_string(payload.get("HostName")),
@@ -140,14 +140,14 @@ class RemoteEndpointOption:
 
 
 @dataclass(slots=True)
-class RemoteAuthenticationOption:
+class HostAuthenticationOption:
     name: str | None = None
     user: str | None = None
     identity_file: str | None = None
     comment: str | None = None
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "RemoteAuthenticationOption":
+    def from_dict(cls, payload: dict[str, Any]) -> "HostAuthenticationOption":
         return cls(
             name=_clean_string(payload.get("AuthenticationName")),
             user=_clean_string(payload.get("User")),
@@ -169,13 +169,13 @@ class RemoteAuthenticationOption:
 
 
 @dataclass(slots=True)
-class RemoteExtraConfig:
+class HostExtraConfig:
     key: str | None = None
     value: str | None = None
     comment: str | None = None
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "RemoteExtraConfig":
+    def from_dict(cls, payload: dict[str, Any]) -> "HostExtraConfig":
         return cls(
             key=_clean_string(payload.get("Key")),
             value=_clean_string(payload.get("Value")),
@@ -194,28 +194,28 @@ class RemoteExtraConfig:
 
 
 @dataclass(slots=True)
-class RemoteHostDefinition:
+class HostDefinition:
     server_name: str | None = None
     comment: str | None = None
-    endpoints: list[RemoteEndpointOption] = field(default_factory=list)
-    authentication: list[RemoteAuthenticationOption] = field(default_factory=list)
-    extra_config: list[RemoteExtraConfig] = field(default_factory=list)
+    endpoints: list[HostEndpointOption] = field(default_factory=list)
+    authentication: list[HostAuthenticationOption] = field(default_factory=list)
+    extra_config: list[HostExtraConfig] = field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "RemoteHostDefinition":
+    def from_dict(cls, payload: dict[str, Any]) -> "HostDefinition":
         return cls(
             server_name=_clean_string(payload.get("ServerName")),
             comment=_clean_string(payload.get("Comment")),
             endpoints=[
-                RemoteEndpointOption.from_dict(item)
+                HostEndpointOption.from_dict(item)
                 for item in payload.get("Endpoint", [])
             ],
             authentication=[
-                RemoteAuthenticationOption.from_dict(item)
+                HostAuthenticationOption.from_dict(item)
                 for item in payload.get("Authentication", [])
             ],
             extra_config=[
-                RemoteExtraConfig.from_dict(item)
+                HostExtraConfig.from_dict(item)
                 for item in payload.get("ExtraConfig", [])
             ],
         )
