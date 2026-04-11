@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.0.3 (2026-04-11)
+
+- added interactive `select` completion for multi-endpoint and multi-authentication hosts in TTY terminals while keeping explicit stable-name selection unchanged
+- made noninteractive `select` failures explicit by requiring `--endpoint <stable_name>` and `--auth <stable_name>` when multiple choices exist
+- cleaned up top-level `KeywharfError` exits so expected CLI errors print without extra traceback noise
+- aligned README, CLI, configuration, and workspace-template docs with current `select` behavior and name-based state semantics, including singleton `null` selectors
+- bumped version metadata to `1.0.3`, added release notes, and added a small release-doc entrypoint
+
 ## 1.0.2 (2026-04-11)
 
 - finalized the project on the current command model: `init`, `repo init`, `repo sync`, `validate`, `render`, `apply`, `install-include`, `select`, `deselect`, `repo host ...`, and `local`

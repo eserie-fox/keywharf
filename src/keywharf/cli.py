@@ -68,7 +68,7 @@ def main() -> None:
         app()
     except KeywharfError as exc:
         typer.echo(str(exc), err=True)
-        raise typer.Exit(code=exc.exit_code) from exc
+        raise SystemExit(exc.exit_code)
 
 
 if __name__ == "__main__":

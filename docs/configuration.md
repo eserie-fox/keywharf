@@ -109,6 +109,7 @@ Rules:
 
 - one `ServerName` maps to at most one state entry
 - selectors are name-based, not index-based
+- `endpoint_name` and `authentication_name` are optional name-based selector fields
 - `endpoint_name` may be `null` only for a singleton endpoint set
 - `authentication_name` may be `null` only for a singleton authentication set
 
@@ -144,7 +145,7 @@ Current edit boundary:
 - `repo host add` creates a host shell only
 - `repo host endpoint add` is how endpoints are added later
 - `repo host auth add` is how authentication options are added later
-- `select` stores endpoint/auth stable names in local state
+- `select` writes name-based endpoint/authentication selectors into local state; singleton selections may leave those fields `null`
 - `validate` reports every host shell missing endpoint options, authentication options, or both
 - `render` and `apply` only require selected hosts to be complete
 - `ExtraConfig` is preserved but not exposed as CLI CRUD yet
