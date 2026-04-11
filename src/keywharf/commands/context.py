@@ -12,22 +12,23 @@ import typer
 from keywharf.config.loader import load_resolved_manager_config
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.domain.errors import KeywharfError
-from keywharf.domain.models import RemoteHostDefinition
-from keywharf.services.remote_hosts import load_remote_host_map
+from keywharf.domain.models import HostDefinition
+from keywharf.services.host_definitions import load_host_definition_map
+from keywharf.services.host_repo_setup import missing_host_repo_config_message
 
 
 @dataclass(slots=True)
 class CLIState:
     config_override: Path | None
-    data_root_override: Path | None
+    workspace_override: Path | None
     manager_config: ResolvedManagerConfig | None = None
-    remote_hosts: dict[str, RemoteHostDefinition] | None = None
+    host_definitions: dict[str, HostDefinition] | None = None
 
 
-def build_cli_state(config_override: Path | None, data_root_override: Path | None) -> CLIState:
+def build_cli_state(config_override: Path | None, workspace_override: Path | None) -> CLIState:
     return CLIState(
         config_override=config_override,
-        data_root_override=data_root_override,
+        workspace_override=workspace_override,
     )
 
 
@@ -50,12 +51,12 @@ def get_manager_config(ctx: typer.Context) -> ResolvedManagerConfig:
     try:
         state.manager_config = load_resolved_manager_config(
             state.config_override,
-            data_root=state.data_root_override,
+            workspace_root=state.workspace_override,
         )
     except FileNotFoundError as exc:
         missing_path = exc.filename or str(exc)
         raise KeywharfError(
-            f"Config file not found at {missing_path}. Provide --config or run 'keywharf init' first.",
+            f"Config file not found at {missing_path}. The workspace marker was found, but config.json is missing. Provide --config or create a new workspace with 'keywharf init <workspace_name>'.",
             exit_code=2,
         ) from exc
     except ValidationError as exc:
@@ -68,20 +69,18 @@ def get_manager_config(ctx: typer.Context) -> ResolvedManagerConfig:
     return state.manager_config
 
 
-def get_remote_hosts(ctx: typer.Context) -> dict[str, RemoteHostDefinition]:
+def get_host_definitions(ctx: typer.Context) -> dict[str, HostDefinition]:
     state = _require_state(ctx)
-    if state.remote_hosts is not None:
-        return state.remote_hosts
+    if state.host_definitions is not None:
+        return state.host_definitions
 
+    config = get_manager_config(ctx)
     try:
-        state.remote_hosts = load_remote_host_map(get_manager_config(ctx))
+        state.host_definitions = load_host_definition_map(config)
     except FileNotFoundError as exc:
-        raise KeywharfError(
-            "Remote repository config not found. Run 'keywharf pull' to clone/sync it first.",
-            exit_code=2,
-        ) from exc
-    return state.remote_hosts
+        raise KeywharfError(missing_host_repo_config_message(config), exit_code=2) from exc
+    return state.host_definitions
 
 
-def set_remote_hosts(ctx: typer.Context, remote_hosts: dict[str, RemoteHostDefinition]) -> None:
-    _require_state(ctx).remote_hosts = remote_hosts
+def set_host_definitions(ctx: typer.Context, host_definitions: dict[str, HostDefinition]) -> None:
+    _require_state(ctx).host_definitions = host_definitions

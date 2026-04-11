@@ -13,12 +13,12 @@ from tests.support import write_json
 def test_manager_config_from_defaults_reads_package_defaults() -> None:
     config = ManagerConfig.from_defaults()
 
-    assert config.ssh_key_remote_repo == "git@example.com:org/keys.git"
-    assert config.ssh_key_local_repo == "%{DATA_ROOT}/repos/keys"
+    assert config.host_repo_remote_url is None
+    assert config.host_repo_path == "%{WORKSPACE}/repo"
     assert config.ssh_dir == "~/.ssh"
     assert config.managed_config_path is None
     assert config.managed_keys_dir is None
-    assert config.state_path == "%{DATA_ROOT}/state/state.json"
+    assert config.state_path == "%{WORKSPACE}/state/state.json"
 
 
 def test_manager_config_from_file_merges_defaults_and_override(tmp_path: Path) -> None:
@@ -27,14 +27,15 @@ def test_manager_config_from_file_merges_defaults_and_override(tmp_path: Path) -
     config = ManagerConfig.from_file(config_path)
 
     assert config.ssh_dir == "~/custom-ssh"
-    assert config.ssh_key_local_repo == "%{DATA_ROOT}/repos/keys"
+    assert config.host_repo_path == "%{WORKSPACE}/repo"
 
 
 def test_manager_config_from_mapping_merges_defaults_and_override() -> None:
-    config = ManagerConfig.from_mapping({"ssh_key_remote_repo": "git@example.com:alt/keys.git"})
+    config = ManagerConfig.from_mapping({"host_repo_remote_url": "git@example.com:alt/hosts.git"})
 
-    assert config.ssh_key_remote_repo == "git@example.com:alt/keys.git"
-    assert config.state_path == "%{DATA_ROOT}/state/state.json"
+    assert config.host_repo_remote_url == "git@example.com:alt/hosts.git"
+    assert config.host_repo_path == "%{WORKSPACE}/repo"
+    assert config.state_path == "%{WORKSPACE}/state/state.json"
 
 
 def test_config_deep_merge_recurse_and_replace_non_mappings() -> None:
@@ -49,4 +50,3 @@ def test_config_deep_merge_recurse_and_replace_non_mappings() -> None:
 def test_manager_config_rejects_unknown_fields() -> None:
     with pytest.raises(ValidationError):
         ManagerConfig.from_mapping({"unknown": "value"})
-

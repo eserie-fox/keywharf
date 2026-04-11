@@ -6,7 +6,7 @@ import typer
 
 from keywharf.commands._invocation import build_command_invocation
 from keywharf.commands._privilege import maybe_reexec_with_sudo, raise_for_missing_privileges
-from keywharf.commands.context import get_manager_config, get_remote_hosts
+from keywharf.commands.context import get_host_definitions, get_manager_config
 from keywharf.services.selections import analyze_select_root_requirements, select_host
 
 
@@ -14,16 +14,16 @@ def register(app: typer.Typer) -> None:
     @app.command("select")
     def select_command(
         ctx: typer.Context,
-        server_name: str = typer.Argument(..., help="Remote host name to select."),
+        server_name: str = typer.Argument(..., help="Host name to select from the host repo."),
         endpoint: str | None = typer.Option(
             None,
             "--endpoint",
-            help="Stable EndPointName to select. Omit only when the remote config has a single endpoint.",
+            help="Stable EndPointName to select. Omit only when the host repo config has a single endpoint.",
         ),
         auth: str | None = typer.Option(
             None,
             "--auth",
-            help="Stable AuthenticationName to select. Omit only when the remote config has a single authentication option.",
+            help="Stable AuthenticationName to select. Omit only when the host repo config has a single authentication option.",
         ),
         sudo: bool = typer.Option(
             False,
@@ -51,7 +51,7 @@ def register(app: typer.Typer) -> None:
         )
         _, selection = select_host(
             config,
-            get_remote_hosts(ctx),
+            get_host_definitions(ctx),
             server_name=server_name,
             endpoint_name=endpoint,
             authentication_name=auth,
@@ -60,4 +60,3 @@ def register(app: typer.Typer) -> None:
             f"Selected '{selection.server_name}' in local state. "
             "Run 'keywharf apply' to materialize the managed config."
         )
-

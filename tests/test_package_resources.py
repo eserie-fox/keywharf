@@ -13,7 +13,8 @@ def test_manager_defaults_resource_is_readable() -> None:
         resources.files("keywharf").joinpath("config_defaults", "manager.json").read_text(encoding="utf-8")
     )
 
-    assert payload["ssh_key_remote_repo"] == "git@example.com:org/keys.git"
+    assert payload["host_repo_remote_url"] is None
+    assert payload["host_repo_path"] == "%{WORKSPACE}/repo"
     assert payload["managed_config_path"] is None
 
 

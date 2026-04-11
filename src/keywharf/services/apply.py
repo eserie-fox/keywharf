@@ -15,7 +15,7 @@ from keywharf.services.privilege import (
     root_owned_hint,
 )
 from keywharf.services.render import render_selected_state
-from keywharf.storage.remote_repo import remote_repo_config_path
+from keywharf.storage.host_repo import host_repo_config_path
 from keywharf.storage.ssh_files import copy_identity_file, delete_identity_file
 
 
@@ -80,11 +80,11 @@ def analyze_apply_root_requirements(
     """Return concrete privilege reasons for one apply plan."""
 
     reasons: list[str] = []
-    remote_config = remote_repo_config_path(config)
+    host_repo_config = host_repo_config_path(config)
 
     for path, label in (
         (config.state_path, "state file"),
-        (remote_config, "remote repository config"),
+        (host_repo_config, "host repo config"),
         (config.managed_config_path, "managed config"),
     ):
         if path.exists() and not can_read_path(path):

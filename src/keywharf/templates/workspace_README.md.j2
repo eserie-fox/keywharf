@@ -5,17 +5,38 @@ This directory is a `keywharf` workspace.
 - marker: `{{ marker_name }}`
 - config: `{{ config_path }}`
 - state: `{{ state_path }}`
+- host repo path: `{{ host_repo_path }}`
 - managed config: `{{ managed_config_path }}`
 - managed keys: `{{ managed_keys_dir }}`
 
-Typical flow:
+`keywharf init` creates workspace files and an empty `repo/` directory at the default host repo path. It does not clone a git repo, initialize git, or touch `~/.ssh`.
+
+If you already have a host repo remote URL:
 
 ```bash
-keywharf --data-root {{ data_root }} pull
-keywharf --data-root {{ data_root }} remote host list
-keywharf --data-root {{ data_root }} select <server>
-keywharf --data-root {{ data_root }} validate
-keywharf --data-root {{ data_root }} render
-keywharf --data-root {{ data_root }} apply
-keywharf --data-root {{ data_root }} install-include
+# edit {{ config_path }} and set host_repo_remote_url
+keywharf --workspace {{ workspace_root }} repo sync
+keywharf --workspace {{ workspace_root }} repo host list
 ```
+
+If you are starting from scratch:
+
+```bash
+keywharf --workspace {{ workspace_root }} repo init
+keywharf --workspace {{ workspace_root }} repo host add <server>
+keywharf --workspace {{ workspace_root }} repo host endpoint add <server> <endpoint_name> --hostname <host>
+keywharf --workspace {{ workspace_root }} repo host auth add <server> <auth_name> [--user <user>] [--identity-file <path>]
+# if you want a real git repo later, run git init / git remote add / commit / push in {{ host_repo_path }} yourself
+```
+
+After your host repo has content:
+
+```bash
+keywharf --workspace {{ workspace_root }} select <server> --endpoint <endpoint_name> --auth <auth_name>
+keywharf --workspace {{ workspace_root }} validate
+keywharf --workspace {{ workspace_root }} render
+keywharf --workspace {{ workspace_root }} apply
+keywharf --workspace {{ workspace_root }} install-include
+```
+
+Hosts may exist as shells before they are usable. `validate` reports every host that is still missing endpoint options, authentication options, or both. `render` and `apply` only require selected hosts to be complete.

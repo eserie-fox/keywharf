@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "keywharf"
 dynamic = ["version"]
-description = "Manage local SSH config alongside a remote key repository."
+description = "Manage local SSH config from a workspace and host repo."
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "keywharf" }]

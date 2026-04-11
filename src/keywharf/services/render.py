@@ -8,25 +8,40 @@ from pathlib import Path
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.domain.errors import KeywharfError
 from keywharf.domain.results import ManagedKeyCopyPlan, RenderResult
-from keywharf.services.managed_hosts import load_managed_hosts
-from keywharf.services.remote_hosts import (
-    build_remote_host_config_from_selection,
-    load_remote_host_map,
+from keywharf.services.host_definitions import (
+    build_host_config_from_selection,
+    load_host_definition_list,
+    load_host_definition_map,
+    validate_host_repo_structure,
+    validate_selection,
 )
+from keywharf.services.host_repo_setup import missing_host_repo_config_message
+from keywharf.services.managed_hosts import load_managed_hosts
 from keywharf.services.managed_config_renderer import render_managed_config
-from keywharf.services.validate import validate_workspace
+from keywharf.services.validate import collect_workspace_warnings
 from keywharf.storage.ssh_files import list_managed_key_files
 from keywharf.storage.state_store import load_state
 
 
 def render_selected_state(config: ResolvedManagerConfig) -> RenderResult:
-    validation = validate_workspace(config)
-    if not validation.ok:
-        raise KeywharfError("\n".join(validation.errors))
+    try:
+        host_definition_list = load_host_definition_list(config)
+    except FileNotFoundError as exc:
+        raise KeywharfError(missing_host_repo_config_message(config), exit_code=2) from exc
+
+    structure_validation = validate_host_repo_structure(config, host_definition_list)
+    if not structure_validation.ok:
+        raise KeywharfError("\n".join(structure_validation.errors))
 
     state = load_state(config)
-    remote_hosts = load_remote_host_map(config)
+    host_definitions = load_host_definition_map(config)
     current_hosts = load_managed_hosts(config)
+
+    selection_errors: list[str] = []
+    for selection in state.selected_hosts:
+        selection_errors.extend(validate_selection(host_definitions, selection))
+    if selection_errors:
+        raise KeywharfError("\n".join(selection_errors))
 
     resolved_selections = []
     desired_hosts = []
@@ -34,9 +49,9 @@ def render_selected_state(config: ResolvedManagerConfig) -> RenderResult:
     desired_key_targets: set[Path] = set()
 
     for selection in state.selected_hosts:
-        resolved, host = build_remote_host_config_from_selection(
+        resolved, host = build_host_config_from_selection(
             config,
-            remote_hosts,
+            host_definitions,
             selection,
         )
         resolved_selections.append(resolved)
@@ -81,7 +96,7 @@ def render_selected_state(config: ResolvedManagerConfig) -> RenderResult:
         resolved_selections=resolved_selections,
         planned_key_copies=planned_key_copies,
         planned_key_deletes=planned_key_deletes,
-        warnings=validation.warnings,
+        warnings=collect_workspace_warnings(config, state=state, current_hosts=current_hosts),
         orphaned_hosts=orphaned_hosts,
         in_sync=_managed_output_matches(current_hosts, desired_hosts)
         and not planned_key_copies

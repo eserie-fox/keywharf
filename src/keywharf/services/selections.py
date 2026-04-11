@@ -1,17 +1,17 @@
-"""State mutation services for selected remote hosts."""
+"""State mutation services for selected hosts from the host repo."""
 
 from __future__ import annotations
 
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.domain.errors import KeywharfError
 from keywharf.domain.models import (
+    HostDefinition,
     LocalState,
-    RemoteHostDefinition,
     SelectedHostState,
 )
+from keywharf.services.host_definitions import resolve_selection
 from keywharf.services.privilege import can_read_path, can_write_file, root_owned_hint
-from keywharf.services.remote_hosts import resolve_selection
-from keywharf.storage.remote_repo import remote_repo_config_path
+from keywharf.storage.host_repo import host_repo_config_path
 from keywharf.storage.state_store import load_state, save_state
 
 
@@ -21,7 +21,7 @@ def load_selected_state(config: ResolvedManagerConfig) -> LocalState:
 
 def select_host(
     config: ResolvedManagerConfig,
-    remote_hosts: dict[str, RemoteHostDefinition],
+    host_definitions: dict[str, HostDefinition],
     *,
     server_name: str,
     endpoint_name: str | None = None,
@@ -32,7 +32,7 @@ def select_host(
         endpoint_name=endpoint_name,
         authentication_name=authentication_name,
     )
-    resolve_selection(remote_hosts, selection)
+    resolve_selection(host_definitions, selection)
 
     state = load_state(config)
     state.upsert(selection)
@@ -54,13 +54,13 @@ def deselect_host(
 
 
 def analyze_select_root_requirements(config: ResolvedManagerConfig) -> list[str]:
-    """Return privilege reasons for mutating local state from remote data."""
+    """Return privilege reasons for mutating local state from host-repo data."""
 
     reasons: list[str] = []
-    remote_config = remote_repo_config_path(config)
-    if remote_config.exists() and not can_read_path(remote_config):
+    host_repo_config = host_repo_config_path(config)
+    if host_repo_config.exists() and not can_read_path(host_repo_config):
         reasons.append(
-            f"remote repository config is not readable by current user: {remote_config}{root_owned_hint(remote_config)}"
+            f"host repo config is not readable by current user: {host_repo_config}{root_owned_hint(host_repo_config)}"
         )
     if config.state_path.exists() and not can_read_path(config.state_path):
         reasons.append(

@@ -9,14 +9,14 @@ from keywharf.cli import app
 from keywharf.services.render import render_selected_state
 from tests.support import (
     load_config,
-    make_data_root,
-    remote_repo_payload,
+    host_repo_payload,
+    make_workspace,
     selection_payload,
     state_payload,
     write_identity_file,
     write_managed_ssh_config,
     write_manager_config,
-    write_remote_repo_config,
+    write_host_repo_config,
     write_state_file,
 )
 
@@ -25,17 +25,17 @@ RUNNER = CliRunner()
 
 
 def test_local_list_reports_applied_pending_and_orphaned(tmp_path: Path) -> None:
-    data_root = make_data_root(tmp_path)
-    config_path = write_manager_config(data_root / "config.json")
-    config = load_config(config_path, data_root=data_root)
-    repo_root = data_root / "repos" / "keys"
-    write_identity_file(repo_root, "keys/id_demo")
-    write_identity_file(repo_root, "keys/id_other")
-    write_remote_repo_config(
-        repo_root,
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    host_repo_path = config.host_repo_path
+    write_identity_file(host_repo_path, "keys/id_demo")
+    write_identity_file(host_repo_path, "keys/id_other")
+    write_host_repo_config(
+        host_repo_path,
         payload=[
-            remote_repo_payload(server_name="demo", endpoint_name="public", auth_name="home")[0],
-            remote_repo_payload(server_name="other", endpoint_name="public", auth_name="home", identity_file="keys/id_other")[0],
+            host_repo_payload(server_name="demo", endpoint_name="public", auth_name="home")[0],
+            host_repo_payload(server_name="other", endpoint_name="public", auth_name="home", identity_file="keys/id_other")[0],
         ],
     )
     write_state_file(
@@ -73,12 +73,12 @@ def test_local_list_reports_applied_pending_and_orphaned(tmp_path: Path) -> None
 
 
 def test_local_show_includes_desired_and_current_blocks(tmp_path: Path) -> None:
-    data_root = make_data_root(tmp_path)
-    config_path = write_manager_config(data_root / "config.json")
-    config = load_config(config_path, data_root=data_root)
-    repo_root = data_root / "repos" / "keys"
-    write_identity_file(repo_root)
-    write_remote_repo_config(repo_root, payload=remote_repo_payload(endpoint_name="public", auth_name="home"))
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    host_repo_path = config.host_repo_path
+    write_identity_file(host_repo_path)
+    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
     write_state_file(
         config.state_path,
         payload=state_payload(

@@ -56,7 +56,7 @@ Current coverage includes:
 - runtime path resolution and workspace discovery
 - package-resource-driven `init`
 - package `.j2` loading and rendering
-- remote host CRUD
+- repo host/endpoint/auth CRUD
 - state persistence
 - validation and selector stability
 - render no-write behavior
@@ -94,7 +94,7 @@ Do not reintroduce:
 - keep services free of Rich/Typer concerns
 - keep storage free of CLI concerns
 - keep the main SSH config outside normal write paths
-- keep remote host editing limited to the local repo checkout unless a later phase explicitly expands that scope
+- keep host/endpoint/auth editing limited to the host repo unless a later phase explicitly expands that scope
 
 ## Packaging
 
@@ -102,6 +102,12 @@ Do not reintroduce:
 - version comes from `keywharf.version.__version__`
 - package resources ship through setuptools package-data rules
 - root package `__init__.py` stays intentionally thin and does not re-export version or service symbols
+
+## Release Notes
+
+- `CHANGELOG.md` remains the canonical project change log
+- starting from `1.0.2`, publish per-version notes under `docs/release-notes/`
+- keep `CHANGELOG.md` and `docs/release-notes/<version>.md` aligned for each release
 
 ## Hygiene
 

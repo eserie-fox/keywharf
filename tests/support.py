@@ -17,28 +17,28 @@ def read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def make_data_root(base: Path, *, marker_name: str = "KEYWHARF_DATA_ROOT") -> Path:
-    data_root = base / "data-root"
-    data_root.mkdir(parents=True, exist_ok=True)
-    (data_root / marker_name).write_text("", encoding="utf-8")
-    return data_root
+def make_workspace(base: Path, *, marker_name: str = "KEYWHARF_WORKSPACE") -> Path:
+    workspace_root = base / "workspace"
+    workspace_root.mkdir(parents=True, exist_ok=True)
+    (workspace_root / marker_name).write_text("", encoding="utf-8")
+    return workspace_root
 
 
 def manager_config_payload(
     *,
-    ssh_key_remote_repo: str = "git@example.com:org/keys.git",
-    ssh_key_local_repo: str | None = None,
-    ssh_dir: str = "%{DATA_ROOT}/ssh-home",
+    host_repo_remote_url: str | None = None,
+    host_repo_path: str | None = None,
+    ssh_dir: str = "%{WORKSPACE}/ssh-home",
     managed_config_path: str | None = None,
     managed_keys_dir: str | None = None,
     state_path: str | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
-        "ssh_key_remote_repo": ssh_key_remote_repo,
+        "host_repo_remote_url": host_repo_remote_url,
         "ssh_dir": ssh_dir,
     }
-    if ssh_key_local_repo is not None:
-        payload["ssh_key_local_repo"] = ssh_key_local_repo
+    if host_repo_path is not None:
+        payload["host_repo_path"] = host_repo_path
     if managed_config_path is not None:
         payload["managed_config_path"] = managed_config_path
     if managed_keys_dir is not None:
@@ -51,9 +51,9 @@ def manager_config_payload(
 def write_manager_config(
     config_path: Path,
     *,
-    ssh_key_remote_repo: str = "git@example.com:org/keys.git",
-    ssh_key_local_repo: str | None = None,
-    ssh_dir: str = "%{DATA_ROOT}/ssh-home",
+    host_repo_remote_url: str | None = None,
+    host_repo_path: str | None = None,
+    ssh_dir: str = "%{WORKSPACE}/ssh-home",
     managed_config_path: str | None = None,
     managed_keys_dir: str | None = None,
     state_path: str | None = None,
@@ -61,8 +61,8 @@ def write_manager_config(
     return write_json(
         config_path,
         manager_config_payload(
-            ssh_key_remote_repo=ssh_key_remote_repo,
-            ssh_key_local_repo=ssh_key_local_repo,
+            host_repo_remote_url=host_repo_remote_url,
+            host_repo_path=host_repo_path,
             ssh_dir=ssh_dir,
             managed_config_path=managed_config_path,
             managed_keys_dir=managed_keys_dir,
@@ -71,8 +71,8 @@ def write_manager_config(
     )
 
 
-def load_config(config_path: Path, *, data_root: Path | None = None):
-    return load_resolved_manager_config(config_path, data_root=data_root)
+def load_config(config_path: Path, *, workspace_root: Path | None = None):
+    return load_resolved_manager_config(config_path, workspace_root=workspace_root)
 
 
 def selection_payload(
@@ -103,65 +103,128 @@ def write_state_file(path: Path, payload: dict[str, Any] | None = None) -> Path:
     return write_json(path, payload or state_payload())
 
 
-def remote_repo_payload(
+def endpoint_payload(
+    *,
+    name: str | None = "public",
+    hostname: str | None = "example.com",
+    port: int | None = 22,
+    comment: str | None = "public",
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    if name is not None:
+        payload["EndPointName"] = name
+    if hostname is not None:
+        payload["HostName"] = hostname
+    if port is not None:
+        payload["Port"] = port
+    if comment is not None:
+        payload["Comment"] = comment
+    return payload
+
+
+def auth_payload(
+    *,
+    name: str | None = "home",
+    user: str | None = "fox",
+    identity_file: str | None = "keys/id_demo",
+    comment: str | None = "main key",
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    if name is not None:
+        payload["AuthenticationName"] = name
+    if user is not None:
+        payload["User"] = user
+    if identity_file is not None:
+        payload["IdentityFile"] = identity_file
+    if comment is not None:
+        payload["Comment"] = comment
+    return payload
+
+
+def host_shell_payload(
+    *,
+    server_name: str = "demo",
+    comment: str | None = "demo host",
+    extra_config: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {"ServerName": server_name}
+    if comment is not None:
+        payload["Comment"] = comment
+    if extra_config is not None:
+        payload["ExtraConfig"] = extra_config
+    else:
+        payload["ExtraConfig"] = [
+            {
+                "Key": "ProxyJump",
+                "Value": "bastion",
+                "Comment": "optional hop",
+            }
+        ]
+    return payload
+
+
+def host_repo_payload(
     *,
     server_name: str = "demo",
     endpoint_name: str | None = None,
     auth_name: str | None = None,
     hostname: str = "example.com",
-    port: int = 22,
-    user: str = "fox",
-    identity_file: str = "keys/id_demo",
+    port: int | None = 22,
+    user: str | None = "fox",
+    identity_file: str | None = "keys/id_demo",
+    comment: str | None = "demo host",
+    endpoint_comment: str | None = "public",
+    auth_comment: str | None = "main key",
     endpoints: list[dict[str, Any]] | None = None,
     authentications: list[dict[str, Any]] | None = None,
+    extra_config: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    return [
-        {
-            "ServerName": server_name,
-            "Comment": "demo host",
-            "Endpoint": endpoints
-            or [
-                {
-                    "EndPointName": endpoint_name,
-                    "HostName": hostname,
-                    "Port": port,
-                    "Comment": "public",
-                }
-            ],
-            "Authentication": authentications
-            or [
-                {
-                    "AuthenticationName": auth_name,
-                    "User": user,
-                    "IdentityFile": identity_file,
-                    "Comment": "main key",
-                }
-            ],
-            "ExtraConfig": [
-                {
-                    "Key": "ProxyJump",
-                    "Value": "bastion",
-                    "Comment": "optional hop",
-                }
-            ],
-        }
-    ]
+    payload = host_shell_payload(
+        server_name=server_name,
+        comment=comment,
+        extra_config=extra_config,
+    )
+    payload["Endpoint"] = (
+        endpoints
+        if endpoints is not None
+        else [
+            endpoint_payload(
+                name=endpoint_name,
+                hostname=hostname,
+                port=port,
+                comment=endpoint_comment,
+            )
+        ]
+    )
+    payload["Authentication"] = (
+        authentications
+        if authentications is not None
+        else [
+            auth_payload(
+                name=auth_name,
+                user=user,
+                identity_file=identity_file,
+                comment=auth_comment,
+            )
+        ]
+    )
+    return [payload]
 
 
-def write_remote_repo_config(repo_root: Path, payload: list[dict[str, Any]] | None = None) -> Path:
-    repo_root.mkdir(parents=True, exist_ok=True)
+def write_host_repo_config(host_repo_path: Path, payload: list[dict[str, Any]] | None = None) -> Path:
+    host_repo_path.mkdir(parents=True, exist_ok=True)
     return write_json(
-        repo_root / "config.json",
-        remote_repo_payload() if payload is None else payload,
+        host_repo_path / "config.json",
+        host_repo_payload() if payload is None else payload,
     )
 
 
 def write_identity_file(
-    repo_root: Path,
+    host_repo_path: Path,
     relative_path: str = "keys/id_demo",
     content: str = "PRIVATE KEY",
 ) -> Path:
-    path = repo_root / relative_path
+    path = host_repo_path / relative_path
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
     return path

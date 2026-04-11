@@ -7,28 +7,29 @@ import pytest
 from keywharf.domain.errors import KeywharfError
 from keywharf.services.apply import apply_selected_state
 from tests.support import (
+    host_repo_payload,
+    host_shell_payload,
     load_config,
-    make_data_root,
-    remote_repo_payload,
+    make_workspace,
     selection_payload,
     state_payload,
     write_identity_file,
     write_local_ssh_config,
     write_managed_ssh_config,
     write_manager_config,
-    write_remote_repo_config,
+    write_host_repo_config,
     write_state_file,
 )
 
 
 def test_apply_writes_only_manager_owned_files_and_cleans_stale_keys(tmp_path: Path) -> None:
-    data_root = make_data_root(tmp_path)
-    config_path = write_manager_config(data_root / "config.json")
-    config = load_config(config_path, data_root=data_root)
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
     write_local_ssh_config(config.ssh_dir, "Host untouched\n  HostName untouched.example.com\n")
-    repo_root = data_root / "repos" / "keys"
-    write_identity_file(repo_root)
-    write_remote_repo_config(repo_root, payload=remote_repo_payload(endpoint_name="public", auth_name="home"))
+    host_repo_path = config.host_repo_path
+    write_identity_file(host_repo_path)
+    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
     write_state_file(
         config.state_path,
         payload=state_payload(
@@ -53,12 +54,12 @@ def test_apply_writes_only_manager_owned_files_and_cleans_stale_keys(tmp_path: P
 
 
 def test_apply_preserves_existing_managed_config_when_key_copy_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    data_root = make_data_root(tmp_path)
-    config_path = write_manager_config(data_root / "config.json")
-    config = load_config(config_path, data_root=data_root)
-    repo_root = data_root / "repos" / "keys"
-    write_identity_file(repo_root)
-    write_remote_repo_config(repo_root, payload=remote_repo_payload(endpoint_name="public", auth_name="home"))
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    host_repo_path = config.host_repo_path
+    write_identity_file(host_repo_path)
+    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
     write_state_file(
         config.state_path,
         payload=state_payload(
@@ -85,16 +86,16 @@ def test_apply_preserves_existing_managed_config_when_key_copy_fails(tmp_path: P
 
 
 def test_apply_rejects_empty_state_when_managed_output_exists(tmp_path: Path) -> None:
-    data_root = make_data_root(tmp_path)
-    config_path = write_manager_config(data_root / "config.json")
-    config = load_config(config_path, data_root=data_root)
-    repo_root = data_root / "repos" / "keys"
-    write_identity_file(repo_root)
-    write_remote_repo_config(repo_root)
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    host_repo_path = config.host_repo_path
+    write_identity_file(host_repo_path)
+    write_host_repo_config(host_repo_path)
     write_state_file(config.state_path, payload=state_payload())
     write_managed_ssh_config(
         config.managed_config_path,
-        "# This file is managed by keywharf\n\nHost legacy\n  HostName legacy.example.com\n",
+        "# This file is managed by keywharf\n\nHost stale\n  HostName stale.example.com\n",
     )
 
     with pytest.raises(KeywharfError):
@@ -102,20 +103,48 @@ def test_apply_rejects_empty_state_when_managed_output_exists(tmp_path: Path) ->
 
 
 def test_apply_allow_empty_can_clear_non_empty_managed_output(tmp_path: Path) -> None:
-    data_root = make_data_root(tmp_path)
-    config_path = write_manager_config(data_root / "config.json")
-    config = load_config(config_path, data_root=data_root)
-    repo_root = data_root / "repos" / "keys"
-    write_identity_file(repo_root)
-    write_remote_repo_config(repo_root)
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    host_repo_path = config.host_repo_path
+    write_identity_file(host_repo_path)
+    write_host_repo_config(host_repo_path)
     write_state_file(config.state_path, payload=state_payload())
     write_managed_ssh_config(
         config.managed_config_path,
-        "# This file is managed by keywharf\n\nHost legacy\n  HostName legacy.example.com\n",
+        "# This file is managed by keywharf\n\nHost stale\n  HostName stale.example.com\n",
     )
 
     result = apply_selected_state(config, allow_empty=True)
 
     assert result.changed is True
-    assert "Host legacy" not in config.managed_config_path.read_text(encoding="utf-8")
+    assert "Host stale" not in config.managed_config_path.read_text(encoding="utf-8")
 
+
+def test_apply_ignores_unselected_incomplete_hosts(tmp_path: Path) -> None:
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(workspace_root / "config.json")
+    config = load_config(config_path, workspace_root=workspace_root)
+    write_local_ssh_config(config.ssh_dir, "Host untouched\n  HostName untouched.example.com\n")
+    write_identity_file(config.host_repo_path)
+    write_host_repo_config(
+        config.host_repo_path,
+        payload=[
+            host_repo_payload(endpoint_name="public", auth_name="home")[0],
+            host_shell_payload(server_name="draft"),
+        ],
+    )
+    write_state_file(
+        config.state_path,
+        payload=state_payload(
+            selected_hosts=[
+                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+            ]
+        ),
+    )
+
+    result = apply_selected_state(config)
+
+    assert result.changed is True
+    assert "Host demo" in config.managed_config_path.read_text(encoding="utf-8")
+    assert "draft" not in config.managed_config_path.read_text(encoding="utf-8")

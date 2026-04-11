@@ -5,8 +5,11 @@ from __future__ import annotations
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.domain.errors import KeywharfError
 from keywharf.domain.results import LocalHostStatus
+from keywharf.services.host_definitions import (
+    build_host_config_from_selection,
+    load_host_definition_map,
+)
 from keywharf.services.managed_hosts import load_managed_hosts
-from keywharf.services.remote_hosts import build_remote_host_config_from_selection, load_remote_host_map
 from keywharf.storage.state_store import load_state
 
 
@@ -19,32 +22,32 @@ def list_local_statuses(config: ResolvedManagerConfig) -> list[LocalHostStatus]:
         if host.name is not None
     }
 
-    remote_hosts = None
-    remote_error = None
+    host_definitions = None
+    host_repo_error = None
     try:
-        remote_hosts = load_remote_host_map(config)
+        host_definitions = load_host_definition_map(config)
     except Exception as exc:
-        remote_error = str(exc)
+        host_repo_error = str(exc)
 
     statuses: list[LocalHostStatus] = []
     for selection in state.selected_hosts:
         current_host = current_by_name.pop(selection.server_name, None)
-        if remote_hosts is None:
+        if host_definitions is None:
             statuses.append(
                 LocalHostStatus(
                     server_name=selection.server_name,
                     status="invalid",
                     selection=selection,
                     current_host=current_host,
-                    reason=remote_error,
+                    reason=host_repo_error,
                 )
             )
             continue
 
         try:
-            resolved, desired_host = build_remote_host_config_from_selection(
+            resolved, desired_host = build_host_config_from_selection(
                 config,
-                remote_hosts,
+                host_definitions,
                 selection,
             )
         except Exception as exc:

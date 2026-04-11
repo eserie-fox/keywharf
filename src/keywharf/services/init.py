@@ -1,4 +1,4 @@
-"""Initialize a minimal keywharf workspace skeleton from package resources."""
+"""Initialize a new keywharf workspace skeleton."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ from pathlib import Path
 
 from keywharf.config.loader import load_resolved_manager_config
 from keywharf.config.models import ManagerConfig
-from keywharf.config.resolver import resolve_manager_config
 from keywharf.config.resources import read_text, render_template
+from keywharf.domain.errors import KeywharfError
 from keywharf.domain.results import InitResult
-from keywharf.runtime.paths import DATA_ROOT_MARKER
-from keywharf.services.privilege import can_read_path, can_write_directory, can_write_file, root_owned_hint
+from keywharf.runtime.paths import WORKSPACE_MARKER
+from keywharf.services.privilege import can_write_directory, can_write_file, root_owned_hint
 
 
 EMPTY_STATE_RESOURCE_SPEC = "pkg://keywharf/templates/init_state.json"
@@ -19,190 +19,151 @@ WORKSPACE_GITIGNORE_TEMPLATE = "workspace_gitignore.j2"
 
 
 def resolve_init_paths(
-    config_override: Path | None = None,
+    workspace_name: str,
     *,
-    data_root: Path | None = None,
+    base_dir: Path | None = None,
     cwd: Path | None = None,
 ) -> tuple[Path, Path]:
     current_dir = (cwd or Path.cwd()).expanduser().resolve()
-    resolved_data_root = (
-        data_root.expanduser().resolve() if data_root is not None else current_dir
-    )
-
-    if config_override is None:
-        return resolved_data_root, (resolved_data_root / "config.json").resolve()
-
-    raw_config = Path(config_override).expanduser()
-    if raw_config.is_absolute():
-        config_path = raw_config.resolve()
-        if data_root is None:
-            resolved_data_root = config_path.parent
-        elif not config_path.is_relative_to(resolved_data_root):
-            raise RuntimeError(
-                f"Absolute --config path {config_path} is outside data root {resolved_data_root}."
-            )
-        return resolved_data_root, config_path
-
-    return resolved_data_root, (resolved_data_root / raw_config).resolve()
+    resolved_base_dir = (base_dir or current_dir).expanduser().resolve()
+    cleaned_name = workspace_name.strip()
+    if not cleaned_name:
+        raise KeywharfError("Workspace name must not be blank.", exit_code=2)
+    workspace_root = (resolved_base_dir / cleaned_name).resolve()
+    return workspace_root, (workspace_root / "config.json").resolve()
 
 
 def initialize_workspace(
-    config_override: Path | None = None,
+    workspace_name: str,
     *,
-    data_root: Path | None = None,
+    base_dir: Path | None = None,
     cwd: Path | None = None,
-    ssh_key_remote_repo: str = "git@example.com:org/keys.git",
     ssh_dir: str = "~/.ssh",
 ) -> InitResult:
-    resolved_data_root, config_path = resolve_init_paths(
-        config_override,
-        data_root=data_root,
+    resolved_workspace_root, config_path = resolve_init_paths(
+        workspace_name,
+        base_dir=base_dir,
         cwd=cwd,
     )
     created_paths: list[Path] = []
-    preserved_paths: list[Path] = []
 
-    resolved_data_root.mkdir(parents=True, exist_ok=True)
-    marker_path = resolved_data_root / DATA_ROOT_MARKER
-    if marker_path.exists():
-        preserved_paths.append(marker_path)
+    if resolved_workspace_root.exists():
+        if not resolved_workspace_root.is_dir():
+            raise KeywharfError(
+                f"Workspace target exists but is not a directory: {resolved_workspace_root}"
+            )
+        if any(resolved_workspace_root.iterdir()):
+            raise KeywharfError(
+                f"Workspace target already exists and is not empty: {resolved_workspace_root}"
+            )
     else:
-        marker_path.write_text("", encoding="utf-8")
-        created_paths.append(marker_path)
+        resolved_workspace_root.mkdir(parents=True, exist_ok=False)
+        created_paths.append(resolved_workspace_root)
 
-    config_path.parent.mkdir(parents=True, exist_ok=True)
     generated_config = ManagerConfig.from_mapping(
         {
-            "ssh_key_remote_repo": ssh_key_remote_repo,
             "ssh_dir": ssh_dir,
         }
     )
-    if config_path.exists():
-        preserved_paths.append(config_path)
-    else:
-        config_path.write_text(generated_config.model_dump_json(indent=2) + "\n", encoding="utf-8")
-        created_paths.append(config_path)
 
-    config = load_resolved_manager_config(config_path, data_root=resolved_data_root)
+    marker_path = resolved_workspace_root / WORKSPACE_MARKER
+    marker_path.write_text("", encoding="utf-8")
+    created_paths.append(marker_path)
 
-    for directory in (
-        config.ssh_key_local_repo.parent,
-        config.managed_config_path.parent,
-        config.managed_keys_dir,
-        config.state_path.parent,
-    ):
-        existed = directory.exists()
+    config_path.write_text(generated_config.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    created_paths.append(config_path)
+
+    config = load_resolved_manager_config(config_path, workspace_root=resolved_workspace_root)
+
+    for directory in (config.state_path.parent, config.host_repo_path):
+        if directory.exists():
+            continue
         directory.mkdir(parents=True, exist_ok=True)
-        if existed:
-            preserved_paths.append(directory)
-        else:
-            created_paths.append(directory)
+        created_paths.append(directory)
 
-    if config.state_path.exists():
-        preserved_paths.append(config.state_path)
-    else:
-        config.state_path.write_text(read_text(EMPTY_STATE_RESOURCE_SPEC), encoding="utf-8")
-        created_paths.append(config.state_path)
+    config.state_path.write_text(read_text(EMPTY_STATE_RESOURCE_SPEC), encoding="utf-8")
+    created_paths.append(config.state_path)
 
     for path, content in (
         (
-            resolved_data_root / "README.md",
+            resolved_workspace_root / "README.md",
             render_template(
                 WORKSPACE_README_TEMPLATE,
-                data_root=resolved_data_root.as_posix(),
+                workspace_root=resolved_workspace_root.as_posix(),
                 config_path=config_path.as_posix(),
                 state_path=config.state_path.as_posix(),
+                host_repo_path=config.host_repo_path.as_posix(),
                 managed_config_path=config.managed_config_path.as_posix(),
                 managed_keys_dir=config.managed_keys_dir.as_posix(),
-                marker_name=DATA_ROOT_MARKER,
+                marker_name=WORKSPACE_MARKER,
             ),
         ),
         (
-            resolved_data_root / ".gitignore",
+            resolved_workspace_root / ".gitignore",
             render_template(WORKSPACE_GITIGNORE_TEMPLATE),
         ),
     ):
-        if path.exists():
-            preserved_paths.append(path)
-            continue
         path.write_text(content, encoding="utf-8")
         created_paths.append(path)
 
     return InitResult(
-        data_root=resolved_data_root,
+        workspace_root=resolved_workspace_root,
         config_path=config_path,
         state_path=config.state_path,
+        host_repo_path=config.host_repo_path,
         created_paths=created_paths,
-        preserved_paths=preserved_paths,
     )
 
 
 def analyze_init_root_requirements(
-    config_override: Path | None = None,
+    workspace_name: str,
     *,
-    data_root: Path | None = None,
+    base_dir: Path | None = None,
     cwd: Path | None = None,
-    ssh_key_remote_repo: str = "git@example.com:org/keys.git",
-    ssh_dir: str = "~/.ssh",
 ) -> list[str]:
     """Return concrete privilege reasons for one init run."""
 
-    resolved_data_root, config_path = resolve_init_paths(
-        config_override,
-        data_root=data_root,
+    resolved_workspace_root, config_path = resolve_init_paths(
+        workspace_name,
+        base_dir=base_dir,
         cwd=cwd,
     )
-    marker_path = resolved_data_root / DATA_ROOT_MARKER
+    marker_path = resolved_workspace_root / WORKSPACE_MARKER
+    state_dir = resolved_workspace_root / "state"
+    state_path = state_dir / "state.json"
+    repo_dir = resolved_workspace_root / "repo"
     reasons: list[str] = []
 
-    if config_path.exists():
-        if not can_read_path(config_path):
+    if not resolved_workspace_root.exists():
+        if not can_write_directory(resolved_workspace_root):
             reasons.append(
-                f"manager config is not readable by current user: {config_path}{root_owned_hint(config_path)}"
+                f"workspace target directory is not creatable by current user: {resolved_workspace_root}{root_owned_hint(resolved_workspace_root.parent)}"
             )
-            return reasons
-        resolved_config = load_resolved_manager_config(config_path, data_root=resolved_data_root)
-    else:
-        resolved_config = resolve_manager_config(
-            ManagerConfig.from_mapping(
-                {
-                    "ssh_key_remote_repo": ssh_key_remote_repo,
-                    "ssh_dir": ssh_dir,
-                }
-            ),
-            config_path=config_path,
-            data_root=resolved_data_root,
-        )
-
-    if not marker_path.exists() and not can_write_file(marker_path):
+    elif not can_write_directory(resolved_workspace_root):
         reasons.append(
-            f"data root marker path is not writable by current user: {marker_path}{root_owned_hint(marker_path.parent)}"
-        )
-    if not config_path.exists() and not can_write_file(config_path):
-        reasons.append(
-            f"manager config path is not writable by current user: {config_path}{root_owned_hint(config_path.parent)}"
+            f"workspace target directory is not writable by current user: {resolved_workspace_root}{root_owned_hint(resolved_workspace_root)}"
         )
 
     for directory, label in (
-        (resolved_data_root, "data root"),
-        (resolved_config.ssh_key_local_repo.parent, "local repo parent"),
-        (resolved_config.managed_config_path.parent, "managed config parent"),
-        (resolved_config.managed_keys_dir, "managed keys directory"),
-        (resolved_config.state_path.parent, "state directory"),
+        (state_dir, "state directory"),
+        (repo_dir, "host repo directory"),
     ):
-        if not directory.exists() and not can_write_directory(directory):
+        if directory.exists():
+            if not can_write_directory(directory):
+                reasons.append(
+                    f"{label} is not writable by current user: {directory}{root_owned_hint(directory)}"
+                )
+        elif not can_write_directory(directory):
             reasons.append(
                 f"{label} is not creatable by current user: {directory}{root_owned_hint(directory.parent)}"
             )
-        elif directory.exists() and not can_write_directory(directory):
-            reasons.append(
-                f"{label} is not writable by current user: {directory}{root_owned_hint(directory)}"
-            )
 
     for path, label in (
-        (resolved_data_root / "README.md", "workspace README"),
-        (resolved_data_root / ".gitignore", "workspace gitignore"),
-        (resolved_config.state_path, "state file"),
+        (marker_path, "workspace marker"),
+        (config_path, "manager config"),
+        (state_path, "state file"),
+        (resolved_workspace_root / "README.md", "workspace README"),
+        (resolved_workspace_root / ".gitignore", "workspace gitignore"),
     ):
         if not path.exists() and not can_write_file(path):
             reasons.append(
