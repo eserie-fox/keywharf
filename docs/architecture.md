@@ -26,9 +26,9 @@ Package `__init__.py` files stay intentionally thin and do not re-export interna
 
 Steady-state workflow:
 
-1. `init` creates a workspace skeleton from package resources
-2. `repo init` optionally bootstraps a local-first host repo skeleton
-3. `repo sync` clones or updates the host repo locally
+1. `init` creates a workspace skeleton from package resources, including an empty `repo/` directory
+2. `repo init` optionally bootstraps a local-first host repo skeleton inside that one workspace repo directory
+3. `repo sync` clones or updates the host repo in that same directory
 4. `repo host ...` edits the host repo `config.json`
 5. `select` / `deselect` mutate `state_path`
 6. `validate` checks manager config, host repo config, state, and include presence

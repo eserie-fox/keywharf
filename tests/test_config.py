@@ -14,7 +14,7 @@ def test_manager_config_from_defaults_reads_package_defaults() -> None:
     config = ManagerConfig.from_defaults()
 
     assert config.host_repo_remote_url is None
-    assert config.host_repo_path == "%{WORKSPACE}/repos/hosts"
+    assert config.host_repo_path == "%{WORKSPACE}/repo"
     assert config.ssh_dir == "~/.ssh"
     assert config.managed_config_path is None
     assert config.managed_keys_dir is None
@@ -27,13 +27,14 @@ def test_manager_config_from_file_merges_defaults_and_override(tmp_path: Path) -
     config = ManagerConfig.from_file(config_path)
 
     assert config.ssh_dir == "~/custom-ssh"
-    assert config.host_repo_path == "%{WORKSPACE}/repos/hosts"
+    assert config.host_repo_path == "%{WORKSPACE}/repo"
 
 
 def test_manager_config_from_mapping_merges_defaults_and_override() -> None:
     config = ManagerConfig.from_mapping({"host_repo_remote_url": "git@example.com:alt/hosts.git"})
 
     assert config.host_repo_remote_url == "git@example.com:alt/hosts.git"
+    assert config.host_repo_path == "%{WORKSPACE}/repo"
     assert config.state_path == "%{WORKSPACE}/state/state.json"
 
 

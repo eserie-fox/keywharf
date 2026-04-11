@@ -34,6 +34,8 @@ keywharf --workspace ~/demo repo init
 keywharf --workspace ~/demo repo host add demo --hostname demo.example.com --user fox --identity-file keys/id_demo
 ```
 
+`keywharf init` creates `~/demo/repo` as the workspace's one host repo directory, but it starts empty. `repo init` writes the host repo skeleton there. If you want it to become a real git repository, run `git init`, `git remote add`, and `git push` in `~/demo/repo` yourself.
+
 Then continue with normal selection and apply flow:
 
 ```bash
@@ -72,7 +74,7 @@ Workspace resolution is explicit and predictable:
 5. the first directory containing `KEYWHARF_WORKSPACE` wins
 6. fail fast with the checked candidate paths listed
 
-`keywharf init <workspace_name>` creates the marker, `config.json`, `state/state.json`, `repos/`, and small workspace text files from package resources. It does not touch `~/.ssh` and does not initialize a git repo for you.
+`keywharf init <workspace_name>` creates the marker, `config.json`, `state/state.json`, an empty `repo/` directory, and small workspace text files from package resources. It does not touch `~/.ssh` and does not initialize a git repo for you.
 
 ## Formal Config And Templates
 
@@ -96,6 +98,8 @@ Resource roles are intentionally split:
 - empty `config.json`
 - `keys/`
 - `.gitignore`
+
+It writes those files into the workspace's one host repo directory, `%{WORKSPACE}/repo`. It does not run `git init` or create `.git`.
 
 `repo host` edits only the host repo `config.json`:
 

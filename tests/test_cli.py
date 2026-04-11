@@ -9,7 +9,7 @@ from keywharf.version import __version__
 RUNNER = CliRunner()
 
 
-def test_root_help_shows_final_command_set() -> None:
+def test_root_help_shows_current_command_set() -> None:
     result = RUNNER.invoke(app, [])
 
     assert result.exit_code == 0
@@ -23,8 +23,6 @@ def test_root_help_shows_final_command_set() -> None:
     assert "select" in result.output
     assert "deselect" in result.output
     assert "local" in result.output
-    assert "pull" not in result.output
-    assert "remote" not in result.output
 
 
 def test_version_option_returns_single_source_version() -> None:
@@ -32,13 +30,6 @@ def test_version_option_returns_single_source_version() -> None:
 
     assert result.exit_code == 0
     assert result.output.strip() == __version__
-
-
-def test_removed_legacy_commands_are_absent() -> None:
-    for name in ["add", "remove", "flush", "check"]:
-        result = RUNNER.invoke(app, [name])
-        assert result.exit_code != 0
-        assert "No such command" in result.output
 
 
 def test_local_group_without_subcommand_shows_help() -> None:
@@ -60,15 +51,20 @@ def test_repo_group_without_subcommand_shows_help() -> None:
     assert "host" in result.output
 
 
+def test_repo_host_group_without_subcommand_shows_help() -> None:
+    result = RUNNER.invoke(app, ["repo", "host"])
+
+    assert result.exit_code == 0
+    assert "List, show, and edit host definitions in the host repo." in result.output
+    assert "list" in result.output
+    assert "show" in result.output
+    assert "add" in result.output
+    assert "update" in result.output
+    assert "remove" in result.output
+
+
 def test_init_without_required_workspace_name_reports_missing_argument() -> None:
     result = RUNNER.invoke(app, ["init"])
 
     assert result.exit_code != 0
     assert "Missing argument" in result.output
-
-
-def test_removed_public_commands_and_options_are_absent() -> None:
-    for argv in (["pull"], ["remote"], ["--data-root", "/tmp/demo", "validate"]):
-        result = RUNNER.invoke(app, argv)
-        assert result.exit_code != 0
-        assert "No such" in result.output or "No such option" in result.output

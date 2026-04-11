@@ -78,6 +78,12 @@ def register(app: typer.Typer) -> None:
         for path in result.created_paths:
             typer.echo(f"- {path}")
         typer.echo("")
+        typer.echo(f"Default host repo path: {result.host_repo_path}")
+        typer.echo(
+            "`keywharf init` created that directory as an empty workspace repo. "
+            "Run `repo init` to write `config.json`, `keys/`, and `.gitignore`."
+        )
+        typer.echo("")
         typer.echo("Next steps:")
         typer.echo("A. You already have a host repo remote URL:")
         typer.echo(f"- Edit {result.config_path} and set host_repo_remote_url.")
@@ -85,4 +91,4 @@ def register(app: typer.Typer) -> None:
         typer.echo("B. You are starting from scratch:")
         typer.echo(f"- Run: keywharf --workspace {result.workspace_root} repo init")
         typer.echo(f"- Then: keywharf --workspace {result.workspace_root} repo host add <server> --hostname <host> --user <user> --identity-file keys/<id_file>")
-        typer.echo("- git init / add remote / commit / push is up to you.")
+        typer.echo(f"- If you want a real git repo later, run git init / git remote add / commit / push yourself in {result.host_repo_path}.")

@@ -9,7 +9,7 @@ This directory is a `keywharf` workspace.
 - managed config: `{{ managed_config_path }}`
 - managed keys: `{{ managed_keys_dir }}`
 
-`keywharf init` only creates workspace files. It does not clone a git repo, initialize git, or touch `~/.ssh`.
+`keywharf init` creates workspace files and an empty `repo/` directory at the default host repo path. It does not clone a git repo, initialize git, or touch `~/.ssh`.
 
 If you already have a host repo remote URL:
 
@@ -24,7 +24,7 @@ If you are starting from scratch:
 ```bash
 keywharf --workspace {{ workspace_root }} repo init
 keywharf --workspace {{ workspace_root }} repo host add <server> --hostname <host> --user <user> --identity-file keys/<id_file>
-# then initialize git / add a remote / commit / push yourself if needed
+# if you want a real git repo later, run git init / git remote add / commit / push in {{ host_repo_path }} yourself
 ```
 
 After your host repo has content:

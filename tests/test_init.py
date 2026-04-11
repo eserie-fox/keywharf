@@ -26,25 +26,30 @@ def test_init_creates_workspace_from_package_resources(tmp_path: Path) -> None:
     assert (workspace_root / "state" / "state.json").exists()
     assert (workspace_root / "README.md").exists()
     assert (workspace_root / ".gitignore").exists()
-    assert (workspace_root / "repos").is_dir()
+    assert (workspace_root / "repo").is_dir()
+    assert not (workspace_root / "repos").exists()
+    assert list((workspace_root / "repo").iterdir()) == []
+    assert not (workspace_root / "repo" / ".git").exists()
 
     raw_config = read_json(workspace_root / "config.json")
     assert raw_config["host_repo_remote_url"] is None
-    assert raw_config["host_repo_path"] == "%{WORKSPACE}/repos/hosts"
+    assert raw_config["host_repo_path"] == "%{WORKSPACE}/repo"
     assert raw_config["ssh_dir"] == str(ssh_dir)
     assert raw_config["managed_config_path"] is None
     assert raw_config["managed_keys_dir"] is None
 
     config = load_config(workspace_root / "config.json", workspace_root=workspace_root)
-    assert config.host_repo_path.parent.exists()
+    assert config.host_repo_path == (workspace_root / "repo").resolve()
+    assert config.host_repo_path.exists()
     assert not config.managed_config_path.parent.exists()
     assert not config.managed_keys_dir.exists()
     assert read_json(workspace_root / "state" / "state.json") == {"version": 1, "selected_hosts": []}
 
     assert f"Created workspace: {workspace_root.resolve()}" in result.output
     assert str((workspace_root / "KEYWHARF_WORKSPACE").resolve()) in result.output
-    assert str((workspace_root / "repos").resolve()) in result.output
+    assert str((workspace_root / "repo").resolve()) in result.output
     assert "host_repo_remote_url" in result.output
+    assert "empty workspace repo" in result.output
     assert "repo sync" in result.output
     assert "repo init" in result.output
 
@@ -59,6 +64,7 @@ def test_init_creates_named_workspace_not_current_directory(tmp_path: Path, monk
     assert not (tmp_path / "state").exists()
     assert (tmp_path / "demo" / "config.json").exists()
     assert (tmp_path / "demo" / "state" / "state.json").exists()
+    assert (tmp_path / "demo" / "repo").is_dir()
 
 
 def test_init_rejects_workspace_option(tmp_path: Path) -> None:

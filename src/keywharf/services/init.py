@@ -75,7 +75,9 @@ def initialize_workspace(
 
     config = load_resolved_manager_config(config_path, workspace_root=resolved_workspace_root)
 
-    for directory in (config.host_repo_path.parent, config.state_path.parent):
+    for directory in (config.state_path.parent, config.host_repo_path):
+        if directory.exists():
+            continue
         directory.mkdir(parents=True, exist_ok=True)
         created_paths.append(directory)
 
@@ -108,6 +110,7 @@ def initialize_workspace(
         workspace_root=resolved_workspace_root,
         config_path=config_path,
         state_path=config.state_path,
+        host_repo_path=config.host_repo_path,
         created_paths=created_paths,
     )
 
@@ -128,7 +131,7 @@ def analyze_init_root_requirements(
     marker_path = resolved_workspace_root / WORKSPACE_MARKER
     state_dir = resolved_workspace_root / "state"
     state_path = state_dir / "state.json"
-    repos_dir = resolved_workspace_root / "repos"
+    repo_dir = resolved_workspace_root / "repo"
     reasons: list[str] = []
 
     if not resolved_workspace_root.exists():
@@ -143,7 +146,7 @@ def analyze_init_root_requirements(
 
     for directory, label in (
         (state_dir, "state directory"),
-        (repos_dir, "repo directory"),
+        (repo_dir, "host repo directory"),
     ):
         if directory.exists():
             if not can_write_directory(directory):

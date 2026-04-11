@@ -174,6 +174,7 @@ class InitResult:
     workspace_root: Path
     config_path: Path
     state_path: Path
+    host_repo_path: Path
     created_paths: list[Path] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, object]:
@@ -181,6 +182,7 @@ class InitResult:
             "workspace_root": self.workspace_root.as_posix(),
             "config_path": self.config_path.as_posix(),
             "state_path": self.state_path.as_posix(),
+            "host_repo_path": self.host_repo_path.as_posix(),
             "created_paths": [item.as_posix() for item in self.created_paths],
         }
 

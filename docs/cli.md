@@ -28,8 +28,10 @@ If you are starting from scratch:
 
 ```bash
 keywharf --workspace <path> repo init
-keywharf --workspace <path> repo host add <server> --hostname <host> --user <user> --identity-file <path>
+keywharf --workspace <path> repo host add <server> --hostname <host> --user <user> --identity-file keys/<id_file>
 ```
+
+`keywharf init` creates `<path>/repo` as the workspace's one host repo directory. It is empty until you run `repo init`.
 
 Then continue with the normal selection/apply flow:
 
@@ -45,9 +47,9 @@ keywharf --workspace <path> install-include
 
 | Command | Purpose | Writes |
 | --- | --- | --- |
-| `init` | create the workspace skeleton from package resources | yes |
-| `repo init` | bootstrap a local-first host-repo skeleton | yes |
-| `repo sync` | clone or sync the configured host repo | yes |
+| `init` | create the workspace skeleton from package resources, including an empty `repo/` directory | yes |
+| `repo init` | bootstrap a local-first host-repo skeleton inside `<workspace>/repo` | yes |
+| `repo sync` | clone or sync the configured host repo into `<workspace>/repo` | yes |
 | `repo host list/show` | inspect host definitions in the host repo | no |
 | `repo host add/update/remove` | structure-edit the host repo `config.json` | yes |
 | `select` | upsert one desired selection from the host repo into state | yes |
@@ -107,5 +109,6 @@ Behavior:
 - `install-include --dry-run` never writes files
 - `apply` refuses to clear a non-empty managed config when state is empty unless `--allow-empty` is set
 - `repo host ...` edits only the host repo config and never auto-pushes git changes
-- `repo init` never runs `git init`, `git remote add`, `commit`, or `push`
+- `repo init` never runs `git init`, creates `.git`, runs `git remote add`, `commit`, or `push`
+- if you want `<workspace>/repo` to become a real git repository, do that yourself after `repo init`
 - normal commands do not rewrite the main SSH config

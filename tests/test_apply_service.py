@@ -94,7 +94,7 @@ def test_apply_rejects_empty_state_when_managed_output_exists(tmp_path: Path) ->
     write_state_file(config.state_path, payload=state_payload())
     write_managed_ssh_config(
         config.managed_config_path,
-        "# This file is managed by keywharf\n\nHost legacy\n  HostName legacy.example.com\n",
+        "# This file is managed by keywharf\n\nHost stale\n  HostName stale.example.com\n",
     )
 
     with pytest.raises(KeywharfError):
@@ -111,10 +111,10 @@ def test_apply_allow_empty_can_clear_non_empty_managed_output(tmp_path: Path) ->
     write_state_file(config.state_path, payload=state_payload())
     write_managed_ssh_config(
         config.managed_config_path,
-        "# This file is managed by keywharf\n\nHost legacy\n  HostName legacy.example.com\n",
+        "# This file is managed by keywharf\n\nHost stale\n  HostName stale.example.com\n",
     )
 
     result = apply_selected_state(config, allow_empty=True)
 
     assert result.changed is True
-    assert "Host legacy" not in config.managed_config_path.read_text(encoding="utf-8")
+    assert "Host stale" not in config.managed_config_path.read_text(encoding="utf-8")

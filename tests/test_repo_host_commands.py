@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import shutil
+import subprocess
 
 from typer.testing import CliRunner
 
@@ -22,6 +24,35 @@ from tests.support import (
 
 
 RUNNER = CliRunner()
+
+
+def _run_git(args: list[str], *, cwd: Path | None = None) -> None:
+    subprocess.run(
+        ["git", *args],
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _create_bare_host_repo_remote(base_dir: Path) -> Path:
+    if shutil.which("git") is None:
+        raise RuntimeError("git is required for host repo sync tests")
+
+    source_repo = base_dir / "source"
+    source_repo.mkdir(parents=True)
+    _run_git(["init"], cwd=source_repo)
+    _run_git(["config", "user.email", "tests@example.com"], cwd=source_repo)
+    _run_git(["config", "user.name", "tests"], cwd=source_repo)
+    (source_repo / "config.json").write_text("[]\n", encoding="utf-8")
+    (source_repo / ".gitignore").write_text("*.bak\n", encoding="utf-8")
+    _run_git(["add", "config.json", ".gitignore"], cwd=source_repo)
+    _run_git(["commit", "-m", "init"], cwd=source_repo)
+
+    remote_repo = base_dir / "remote.git"
+    _run_git(["clone", "--bare", str(source_repo), str(remote_repo)])
+    return remote_repo
 
 
 def test_repo_host_list_and_show_read_host_repo_config(tmp_path: Path) -> None:
@@ -54,6 +85,7 @@ def test_repo_init_bootstraps_local_host_repo_and_allows_host_add(tmp_path: Path
     assert read_json(config.host_repo_path / "config.json") == []
     assert (config.host_repo_path / "keys").is_dir()
     assert (config.host_repo_path / ".gitignore").exists()
+    assert not (config.host_repo_path / ".git").exists()
 
     write_identity_file(config.host_repo_path)
     add_result = RUNNER.invoke(
@@ -269,6 +301,25 @@ def test_repo_sync_errors_when_host_repo_remote_url_is_null(tmp_path: Path) -> N
     assert result.exception is not None
     assert "`host_repo_remote_url` is not configured" in str(result.exception)
     assert "repo init" in str(result.exception)
+
+
+def test_repo_sync_clones_into_existing_empty_workspace_repo_directory(tmp_path: Path) -> None:
+    remote_repo = _create_bare_host_repo_remote(tmp_path / "remote-source")
+    workspace_root = make_workspace(tmp_path)
+    config_path = write_manager_config(
+        workspace_root / "config.json",
+        host_repo_remote_url=str(remote_repo),
+    )
+    config = load_config(config_path, workspace_root=workspace_root)
+    config.host_repo_path.mkdir(parents=True, exist_ok=False)
+
+    result = RUNNER.invoke(app, ["--config", str(config_path), "repo", "sync"])
+
+    assert result.exit_code == 0, result.output
+    assert config.host_repo_path == (workspace_root / "repo").resolve()
+    assert read_json(config.host_repo_path / "config.json") == []
+    assert (config.host_repo_path / ".git").is_dir()
+    assert f"Synced host repo into {config.host_repo_path}." in result.output
 
 
 def test_repo_sync_fails_with_actionable_message_for_bootstrap_host_repo(tmp_path: Path) -> None:

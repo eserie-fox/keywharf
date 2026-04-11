@@ -79,7 +79,7 @@ def test_select_succeeds_without_sudo_in_normal_user_paths(tmp_path: Path) -> No
 
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
-    host_repo_path = workspace_root / "repos" / "hosts"
+    host_repo_path = workspace_root / "repo"
     write_identity_file(host_repo_path)
     write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
 

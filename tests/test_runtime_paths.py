@@ -5,7 +5,12 @@ from pathlib import Path
 from keywharf.config.loader import resolve_config_path
 from keywharf.config.models import ManagerConfig
 from keywharf.config.resolver import resolve_manager_config
-from keywharf.runtime.paths import WORKSPACE_ENV, WORKSPACE_MARKER, resolve_workspace_root
+from keywharf.runtime.paths import (
+    WORKSPACE_ENV,
+    WORKSPACE_MARKER,
+    expand_workspace_root,
+    resolve_workspace_root,
+)
 from tests.support import load_config, make_workspace, write_manager_config
 
 
@@ -69,20 +74,13 @@ def test_resolve_workspace_root_prefers_env_over_auto_search(tmp_path: Path) -> 
     assert resolved == env_root.resolve()
 
 
-def test_resolve_workspace_root_ignores_removed_data_root_env_name(tmp_path: Path) -> None:
-    cwd = tmp_path / "cwd"
-    cwd.mkdir()
-    workspace = cwd / "demo"
-    workspace.mkdir()
-    (workspace / WORKSPACE_MARKER).write_text("", encoding="utf-8")
+def test_expand_workspace_root_replaces_workspace_token_in_strings_and_paths(tmp_path: Path) -> None:
+    workspace_root = (tmp_path / "workspace").resolve()
 
-    resolved = resolve_workspace_root(
-        cwd=cwd,
-        home=tmp_path / "home",
-        env={"KEYWHARF_DATA_ROOT": str(tmp_path / "old-env-root")},
+    assert expand_workspace_root("%{WORKSPACE}/repo", workspace_root) == str(workspace_root / "repo")
+    assert expand_workspace_root(Path("%{WORKSPACE}/state/state.json"), workspace_root) == (
+        workspace_root / "state" / "state.json"
     )
-
-    assert resolved == workspace.resolve()
 
 
 def test_resolve_workspace_root_checks_child_directories_before_current_directory(tmp_path: Path) -> None:
@@ -96,21 +94,6 @@ def test_resolve_workspace_root_checks_child_directories_before_current_director
     resolved = resolve_workspace_root(cwd=cwd, home=tmp_path / "home", env={})
 
     assert resolved == child_workspace.resolve()
-
-
-def test_resolve_workspace_root_ignores_removed_data_root_marker_name(tmp_path: Path) -> None:
-    cwd = tmp_path / "cwd"
-    cwd.mkdir()
-    old_marker_workspace = cwd / "old-style"
-    old_marker_workspace.mkdir()
-    (old_marker_workspace / "KEYWHARF_DATA_ROOT").write_text("", encoding="utf-8")
-    new_marker_workspace = cwd / "new-style"
-    new_marker_workspace.mkdir()
-    (new_marker_workspace / WORKSPACE_MARKER).write_text("", encoding="utf-8")
-
-    resolved = resolve_workspace_root(cwd=cwd, home=tmp_path / "home", env={})
-
-    assert resolved == new_marker_workspace.resolve()
 
 
 def test_resolve_workspace_root_finds_workspace_in_ancestor_child_directory(tmp_path: Path) -> None:

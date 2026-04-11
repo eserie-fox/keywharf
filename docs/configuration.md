@@ -57,13 +57,15 @@ Defaults resource:
 ```json
 {
   "host_repo_remote_url": null,
-  "host_repo_path": "%{WORKSPACE}/repos/hosts",
+  "host_repo_path": "%{WORKSPACE}/repo",
   "ssh_dir": "~/.ssh",
   "managed_config_path": null,
   "managed_keys_dir": null,
   "state_path": "%{WORKSPACE}/state/state.json"
 }
 ```
+
+By default, `%{WORKSPACE}/repo` is the one host repo directory under the workspace.
 
 Resolver-derived defaults:
 
@@ -112,7 +114,7 @@ Rules:
 
 ## Host Repo Config
 
-The host repo still uses `config.json` in the repo root.
+The host repo still uses `config.json` in the repo root. With the default config, that repo root is `%{WORKSPACE}/repo`.
 
 Validation rules:
 
@@ -127,6 +129,8 @@ Validation rules:
 - empty `config.json`
 - `keys/`
 - `.gitignore`
+
+`keywharf init` creates `%{WORKSPACE}/repo` as an empty directory. `repo init` then writes this skeleton there. It does not run `git init` or create `.git`.
 
 `repo host add/update/remove` edit only this host repo file. They do not commit, push, or initialize git.
 

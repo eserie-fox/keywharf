@@ -1,6 +1,6 @@
 {
   "host_repo_remote_url": null,
-  "host_repo_path": "%{WORKSPACE}/repos/hosts",
+  "host_repo_path": "%{WORKSPACE}/repo",
   "ssh_dir": "~/.ssh",
   "managed_config_path": null,
   "managed_keys_dir": null,

@@ -14,7 +14,7 @@ def test_manager_defaults_resource_is_readable() -> None:
     )
 
     assert payload["host_repo_remote_url"] is None
-    assert payload["host_repo_path"] == "%{WORKSPACE}/repos/hosts"
+    assert payload["host_repo_path"] == "%{WORKSPACE}/repo"
     assert payload["managed_config_path"] is None
 
 
