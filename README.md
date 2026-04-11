@@ -50,7 +50,7 @@ keywharf --workspace ~/demo apply
 keywharf --workspace ~/demo install-include
 ```
 
-`select` still accepts explicit `--endpoint` and `--auth` stable names. If one side has a single candidate, it is selected automatically. If one side has multiple candidates, `select` prompts in an interactive terminal and fails fast in noninteractive environments until you pass the stable name explicitly.
+`select` still accepts explicit `--endpoint` and `--auth` stable names. If one side has a single candidate, it is selected automatically. If one side has multiple candidates, `select` prompts in an interactive terminal and fails fast in noninteractive environments until you pass the stable name explicitly. Local state keeps name-based selectors; singleton selections may leave `endpoint_name` or `authentication_name` as `null`.
 
 If the manager config lives outside the default workspace root, use `--config <path>` instead of `--workspace`.
 
@@ -132,7 +132,7 @@ Design rules:
 - `repo host add` creates a host shell and may set only the host comment
 - `repo host endpoint ...` manages named endpoint options with `HostName`, optional `Port`, and optional comment
 - `repo host auth ...` manages named authentication options with optional `User`, optional `IdentityFile`, and optional comment
-- `select` stores stable endpoint/auth names in local state
+- `select` writes name-based endpoint/authentication selectors into local state; singleton selections may leave those fields `null`
 - `validate` scans the whole host repo and reports every host shell that is missing endpoint options, authentication options, or both
 - `render` and `apply` only require the hosts selected in local state to be complete
 
@@ -185,5 +185,6 @@ Runtime requirements:
 - [`docs/configuration.md`](docs/configuration.md)
 - [`docs/cli.md`](docs/cli.md)
 - [`docs/development.md`](docs/development.md)
-- [`docs/release-notes/1.0.2.md`](docs/release-notes/1.0.2.md)
+- [`docs/release.md`](docs/release.md)
+- [`docs/release-notes/1.0.3.md`](docs/release-notes/1.0.3.md)
 - [`CHANGELOG.md`](CHANGELOG.md)
