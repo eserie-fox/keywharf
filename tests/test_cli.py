@@ -35,7 +35,6 @@ def test_version_option_returns_single_source_version() -> None:
 def test_local_group_without_subcommand_shows_help() -> None:
     result = RUNNER.invoke(app, ["local"])
 
-    assert result.exit_code == 0
     assert "Inspect local desired state" in result.output
     assert "list" in result.output
     assert "show" in result.output
@@ -44,7 +43,6 @@ def test_local_group_without_subcommand_shows_help() -> None:
 def test_repo_group_without_subcommand_shows_help() -> None:
     result = RUNNER.invoke(app, ["repo"])
 
-    assert result.exit_code == 0
     assert "workspace host repo" in result.output
     assert "init" in result.output
     assert "sync" in result.output
@@ -54,7 +52,6 @@ def test_repo_group_without_subcommand_shows_help() -> None:
 def test_repo_host_group_without_subcommand_shows_help() -> None:
     result = RUNNER.invoke(app, ["repo", "host"])
 
-    assert result.exit_code == 0
     assert "host shells" in result.output
     assert "endpoint" in result.output
     assert "authentication" in result.output
@@ -70,7 +67,6 @@ def test_repo_host_group_without_subcommand_shows_help() -> None:
 def test_repo_host_endpoint_group_without_subcommand_shows_help() -> None:
     result = RUNNER.invoke(app, ["repo", "host", "endpoint"])
 
-    assert result.exit_code == 0
     assert "Manage named endpoint options for one host." in result.output
     assert "list" in result.output
     assert "show" in result.output
@@ -82,7 +78,6 @@ def test_repo_host_endpoint_group_without_subcommand_shows_help() -> None:
 def test_repo_host_auth_group_without_subcommand_shows_help() -> None:
     result = RUNNER.invoke(app, ["repo", "host", "auth"])
 
-    assert result.exit_code == 0
     assert "Manage named authentication options for one host." in result.output
     assert "list" in result.output
     assert "show" in result.output

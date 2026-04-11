@@ -103,6 +103,12 @@ Do not reintroduce:
 - package resources ship through setuptools package-data rules
 - root package `__init__.py` stays intentionally thin and does not re-export version or service symbols
 
+## Release Notes
+
+- `CHANGELOG.md` remains the canonical project change log
+- starting from `1.0.2`, publish per-version notes under `docs/release-notes/`
+- keep `CHANGELOG.md` and `docs/release-notes/<version>.md` aligned for each release
+
 ## Hygiene
 
 Keep generated noise out of the repository:
