@@ -28,6 +28,8 @@ def test_root_help_shows_current_command_set() -> None:
     assert "select" in result.output
     assert "deselect" in result.output
     assert "local" in result.output
+    assert "list" in result.output
+    assert "show" in result.output
 
 
 def test_version_option_returns_single_source_version() -> None:
