@@ -27,6 +27,15 @@ keywharf --workspace ~/demo repo host list
 keywharf --workspace ~/demo repo host show demo
 ```
 
+High-frequency read-only convenience views are also available:
+
+```bash
+keywharf --workspace ~/demo list repo
+keywharf --workspace ~/demo show repo demo
+keywharf --workspace ~/demo list local
+keywharf --workspace ~/demo show local demo
+```
+
 If you are starting from scratch:
 
 ```bash
@@ -138,6 +147,19 @@ Design rules:
 
 `ExtraConfig` is preserved and rendered, but it is not exposed as a CLI editor yet.
 
+Read-only convenience facade (canonical paths stay primary):
+
+- `list repo` -> `repo host list`
+- `show repo <server>` -> `repo host show <server>`
+- `list local` -> `local list`
+- `show local <server>` -> `local show <server>`
+
+Scope boundary:
+
+- convenience targets are only `repo` (host definitions) and `local`
+- convenience commands are read-only only
+- there is no convenience facade for `repo host endpoint ...`, `repo host auth ...`, or any write operations
+
 ## `--sudo`
 
 Mutating commands support `--sudo`:
@@ -186,5 +208,5 @@ Runtime requirements:
 - [`docs/cli.md`](docs/cli.md)
 - [`docs/development.md`](docs/development.md)
 - [`docs/release.md`](docs/release.md)
-- [`docs/release-notes/1.0.3.md`](docs/release-notes/1.0.3.md)
+- [`docs/release-notes/1.0.4.md`](docs/release-notes/1.0.4.md)
 - [`CHANGELOG.md`](CHANGELOG.md)

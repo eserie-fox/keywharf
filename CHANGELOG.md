@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.0.4 (2026-04-12)
+
+- added high-frequency read-only convenience facade commands: `keywharf list repo`, `keywharf show repo <server>`, `keywharf list local`, and `keywharf show local <server>`
+- kept canonical paths as the primary command tree: `keywharf repo host list/show` and `keywharf local list/show`; convenience commands forward to canonical handlers without introducing a second business implementation
+- kept convenience boundaries explicit: only `repo` (host definitions in the host repo) and `local`, read-only only, with no convenience facade for endpoint/auth or write operations
+- aligned CLI help text plus README/CLI docs with the convenience-versus-canonical relationship
+- added convenience parity and help-boundary tests, and bumped runtime/package version metadata to `1.0.4`
+
 ## 1.0.3 (2026-04-11)
 
 - added interactive `select` completion for multi-endpoint and multi-authentication hosts in TTY terminals while keeping explicit stable-name selection unchanged

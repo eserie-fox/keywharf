@@ -24,6 +24,15 @@ keywharf --workspace <path> repo sync
 keywharf --workspace <path> repo host list
 ```
 
+High-frequency read-only convenience views are also available:
+
+```bash
+keywharf --workspace <path> list repo
+keywharf --workspace <path> show repo <server>
+keywharf --workspace <path> list local
+keywharf --workspace <path> show local <server>
+```
+
 If you are starting from scratch:
 
 ```bash
@@ -57,6 +66,7 @@ keywharf --workspace <path> install-include
 | `repo init` | bootstrap a local-first host-repo skeleton inside `<workspace>/repo` | yes |
 | `repo sync` | clone or sync the configured host repo into `<workspace>/repo` | yes |
 | `repo host list/show` | inspect host shells in the host repo | no |
+| `list repo`, `show repo <server>` | convenience read-only facade for `repo host list/show`; here `repo` means host definitions | no |
 | `repo host add/update/remove` | edit host-level fields only | yes |
 | `repo host endpoint list/show` | inspect named endpoint options for one host | no |
 | `repo host endpoint add/update/remove` | edit endpoint options only | yes |
@@ -68,7 +78,19 @@ keywharf --workspace <path> install-include
 | `render` | preview the desired managed SSH config | no |
 | `apply` | validate, render, copy keys, replace managed config | yes |
 | `local list/show` | inspect state versus current managed output | no |
+| `list local`, `show local <server>` | convenience read-only facade for `local list/show` | no |
 | `install-include` | install or preview the `Include` line in the main SSH config | yes |
+
+Canonical paths remain primary:
+
+- `repo host list` and `repo host show <server>`
+- `local list` and `local show <server>`
+
+Convenience boundary:
+
+- facade targets are only `repo` and `local`
+- no `list/show` convenience facade for `endpoint` or `auth`
+- no convenience facade for add/update/remove/edit operations
 
 ## JSON Output
 
@@ -79,6 +101,8 @@ Structured `--json` output is available on:
 - `apply`
 - `repo host list`
 - `repo host show`
+- `list repo`
+- `show repo`
 - `repo host add`
 - `repo host update`
 - `repo host remove`
@@ -94,6 +118,8 @@ Structured `--json` output is available on:
 - `repo host auth remove`
 - `local list`
 - `local show`
+- `list local`
+- `show local`
 
 ## Exit Codes
 
