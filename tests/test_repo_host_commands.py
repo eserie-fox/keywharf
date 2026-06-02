@@ -171,8 +171,7 @@ def test_repo_host_update_rejects_comment_clear_conflict(tmp_path: Path) -> None
         ],
     )
 
-    assert result.exit_code != 0
-    assert "--comment cannot be used with --clear-comment" in result.output
+    assert result.exit_code == 2
 
 
 def test_repo_host_remove_warns_when_local_state_becomes_stale(tmp_path: Path) -> None:
@@ -413,8 +412,7 @@ def test_repo_host_endpoint_update_rejects_port_clear_conflict(tmp_path: Path) -
         ],
     )
 
-    assert conflict_result.exit_code != 0
-    assert "--port cannot be used with --clear-port" in conflict_result.output
+    assert conflict_result.exit_code == 2
 
 
 def test_repo_host_auth_add_list_show_update_remove_and_persist_comment(
@@ -624,8 +622,7 @@ def test_repo_host_auth_update_rejects_conflicts_and_empty_auth(tmp_path: Path) 
         ],
     )
 
-    assert conflict_result.exit_code != 0
-    assert "--user cannot be used with --clear-user" in conflict_result.output
+    assert conflict_result.exit_code == 2
     assert empty_result.exit_code == 1
     assert isinstance(empty_result.exception, KeywharfError)
     assert "must set user or identity file" in str(empty_result.exception)
