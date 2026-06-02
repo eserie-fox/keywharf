@@ -7,7 +7,6 @@ import typer
 from keywharf.commands.local import list_local, show_local
 from keywharf.commands.repo.host_root import list_host_command, show_host_command
 
-
 list_app = typer.Typer(
     name="list",
     no_args_is_help=True,
@@ -41,8 +40,7 @@ def register() -> None:
     list_app.command(
         "local",
         help=(
-            "Convenience command for local desired/current status. "
-            "Canonical: keywharf local list."
+            "Convenience command for local desired/current status. Canonical: keywharf local list."
         ),
     )(list_local)
     show_app.command(

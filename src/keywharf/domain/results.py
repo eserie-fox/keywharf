@@ -9,8 +9,8 @@ from keywharf.domain.models import (
     HostAuthenticationOption,
     HostDefinition,
     HostEndpointOption,
-    SSHHostConfig,
     SelectedHostState,
+    SSHHostConfig,
 )
 
 
@@ -171,9 +171,7 @@ class LocalHostStatus:
             "desired_host": self.desired_host.to_dict() if self.desired_host is not None else None,
             "current_host": self.current_host.to_dict() if self.current_host is not None else None,
             "resolved_selection": (
-                self.resolved_selection.to_dict()
-                if self.resolved_selection is not None
-                else None
+                self.resolved_selection.to_dict() if self.resolved_selection is not None else None
             ),
             "reason": self.reason,
         }

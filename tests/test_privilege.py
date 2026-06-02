@@ -12,7 +12,6 @@ from keywharf.domain.errors import PrivilegeRequiredError
 from keywharf.services.repo_sync import analyze_host_repo_sync_root_requirements
 from tests.support import make_workspace, write_manager_config
 
-
 RUNNER = CliRunner()
 
 
@@ -56,7 +55,9 @@ def test_select_with_sudo_reexecs_full_command(monkeypatch: pytest.MonkeyPatch) 
     assert "demo" in captured["args"]
 
 
-def test_repo_sync_analyzer_reports_unwritable_host_repo_parent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_repo_sync_analyzer_reports_unwritable_host_repo_parent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(
         workspace_root / "config.json",
@@ -75,17 +76,33 @@ def test_repo_sync_analyzer_reports_unwritable_host_repo_parent(tmp_path: Path, 
 
 
 def test_select_succeeds_without_sudo_in_normal_user_paths(tmp_path: Path) -> None:
-    from tests.support import host_repo_payload, write_host_repo_config, write_identity_file
+    from tests.support import (
+        host_repo_payload,
+        write_host_repo_config,
+        write_identity_file,
+    )
 
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     host_repo_path = workspace_root / "repo"
     write_identity_file(host_repo_path)
-    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
+    write_host_repo_config(
+        host_repo_path,
+        payload=host_repo_payload(endpoint_name="public", auth_name="home"),
+    )
 
     result = RUNNER.invoke(
         app,
-        ["--config", str(config_path), "select", "demo", "--endpoint", "public", "--auth", "home"],
+        [
+            "--config",
+            str(config_path),
+            "select",
+            "demo",
+            "--endpoint",
+            "public",
+            "--auth",
+            "home",
+        ],
     )
 
     assert result.exit_code == 0, result.output

@@ -5,7 +5,10 @@ from __future__ import annotations
 import typer
 
 from keywharf.commands._invocation import build_command_invocation
-from keywharf.commands._privilege import maybe_reexec_with_sudo, raise_for_missing_privileges
+from keywharf.commands._privilege import (
+    maybe_reexec_with_sudo,
+    raise_for_missing_privileges,
+)
 from keywharf.commands.context import get_manager_config
 from keywharf.commands.output import console
 from keywharf.services.install_include import (
@@ -58,4 +61,3 @@ def register(app: typer.Typer) -> None:
         typer.echo(
             f"Installed Include into {result.main_config_path} for {result.managed_config_path}."
         )
-

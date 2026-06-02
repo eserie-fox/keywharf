@@ -16,8 +16,8 @@ from keywharf.services.host_definitions import (
     validate_selection,
 )
 from keywharf.services.host_repo_setup import missing_host_repo_config_message
-from keywharf.services.managed_hosts import load_managed_hosts
 from keywharf.services.managed_config_renderer import render_managed_config
+from keywharf.services.managed_hosts import load_managed_hosts
 from keywharf.services.validate import collect_workspace_warnings
 from keywharf.storage.ssh_files import list_managed_key_files
 from keywharf.storage.state_store import load_state
@@ -85,9 +85,7 @@ def render_selected_state(config: ResolvedManagerConfig) -> RenderResult:
     current_hosts.sort(key=lambda host: host.name or "")
     state_names = {item.server_name for item in state.selected_hosts}
     orphaned_hosts = sorted(
-        host.name
-        for host in current_hosts
-        if host.name and host.name not in state_names
+        host.name for host in current_hosts if host.name and host.name not in state_names
     )
 
     return RenderResult(
@@ -107,6 +105,4 @@ def render_selected_state(config: ResolvedManagerConfig) -> RenderResult:
 def _managed_output_matches(current_hosts, desired_hosts) -> bool:
     if len(current_hosts) != len(desired_hosts):
         return False
-    return [host.to_dict() for host in current_hosts] == [
-        host.to_dict() for host in desired_hosts
-    ]
+    return [host.to_dict() for host in current_hosts] == [host.to_dict() for host in desired_hosts]

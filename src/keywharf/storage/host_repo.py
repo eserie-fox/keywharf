@@ -8,7 +8,6 @@ from typing import Any
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.storage.json_store import read_json_list, write_json_value
 
-
 HOST_REPO_CONFIG_FILENAME = "config.json"
 
 

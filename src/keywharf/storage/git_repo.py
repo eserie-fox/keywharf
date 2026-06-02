@@ -33,7 +33,11 @@ def clone_or_sync_repository(remote_url: str, local_path: Path) -> None:
             raise KeywharfError(f"Host repo path exists but is not a directory: {local_path}")
         if not (local_path / ".git").exists():
             if not any(local_path.iterdir()):
-                _run_git(["clone", remote_url, str(local_path)], env=env, action="clone host repo")
+                _run_git(
+                    ["clone", remote_url, str(local_path)],
+                    env=env,
+                    action="clone host repo",
+                )
                 return
             bootstrap_hint = ""
             if (local_path / HOST_REPO_CONFIG_FILENAME).exists():
@@ -54,7 +58,8 @@ def clone_or_sync_repository(remote_url: str, local_path: Path) -> None:
         ).strip()
         if current_url != remote_url:
             raise KeywharfError(
-                f"Host repo remote URL mismatch for {local_path}: origin={current_url}, configured={remote_url}"
+                f"Host repo remote URL mismatch for {local_path}: "
+                f"origin={current_url}, configured={remote_url}"
             )
         _run_git(
             ["pull", "--ff-only", "origin"],

@@ -25,7 +25,9 @@ def test_resolve_config_path_prefers_cli_override(tmp_path: Path) -> None:
     assert resolved == override_path.resolve()
 
 
-def test_load_resolved_manager_config_uses_absolute_config_parent_as_workspace_root(tmp_path: Path) -> None:
+def test_load_resolved_manager_config_uses_absolute_config_parent_as_workspace_root(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = workspace_root / "config.json"
     write_manager_config(config_path)
@@ -34,7 +36,10 @@ def test_load_resolved_manager_config_uses_absolute_config_parent_as_workspace_r
 
     assert loaded.workspace_root == workspace_root.resolve()
     assert loaded.ssh_dir == (workspace_root / "ssh-home").resolve()
-    assert loaded.managed_config_path == (workspace_root / "ssh-home" / "managed" / "keywharf.conf").resolve()
+    assert (
+        loaded.managed_config_path
+        == (workspace_root / "ssh-home" / "managed" / "keywharf.conf").resolve()
+    )
     assert loaded.state_path == (workspace_root / "state" / "state.json").resolve()
 
 
@@ -47,7 +52,9 @@ def test_runtime_resolution_is_separate_from_raw_config(tmp_path: Path) -> None:
         }
     )
     config_path = tmp_path / "workspace" / "config.json"
-    resolved = resolve_manager_config(raw, config_path=config_path, workspace_root=tmp_path / "workspace")
+    resolved = resolve_manager_config(
+        raw, config_path=config_path, workspace_root=tmp_path / "workspace"
+    )
 
     assert raw.ssh_dir == "~/ssh-home"
     assert raw.managed_config_path == "managed/custom.conf"
@@ -74,16 +81,22 @@ def test_resolve_workspace_root_prefers_env_over_auto_search(tmp_path: Path) -> 
     assert resolved == env_root.resolve()
 
 
-def test_expand_workspace_root_replaces_workspace_token_in_strings_and_paths(tmp_path: Path) -> None:
+def test_expand_workspace_root_replaces_workspace_token_in_strings_and_paths(
+    tmp_path: Path,
+) -> None:
     workspace_root = (tmp_path / "workspace").resolve()
 
-    assert expand_workspace_root("%{WORKSPACE}/repo", workspace_root) == str(workspace_root / "repo")
+    assert expand_workspace_root("%{WORKSPACE}/repo", workspace_root) == str(
+        workspace_root / "repo"
+    )
     assert expand_workspace_root(Path("%{WORKSPACE}/state/state.json"), workspace_root) == (
         workspace_root / "state" / "state.json"
     )
 
 
-def test_resolve_workspace_root_checks_child_directories_before_current_directory(tmp_path: Path) -> None:
+def test_resolve_workspace_root_checks_child_directories_before_current_directory(
+    tmp_path: Path,
+) -> None:
     cwd = tmp_path / "cwd"
     cwd.mkdir()
     child_workspace = cwd / "demo"
@@ -96,7 +109,9 @@ def test_resolve_workspace_root_checks_child_directories_before_current_director
     assert resolved == child_workspace.resolve()
 
 
-def test_resolve_workspace_root_finds_workspace_in_ancestor_child_directory(tmp_path: Path) -> None:
+def test_resolve_workspace_root_finds_workspace_in_ancestor_child_directory(
+    tmp_path: Path,
+) -> None:
     home = tmp_path / "home"
     home.mkdir()
     ancestor = tmp_path / "ancestor"
@@ -136,7 +151,9 @@ def test_resolve_workspace_root_accepts_marker_without_config(tmp_path: Path) ->
     assert resolved == workspace.resolve()
 
 
-def test_resolve_workspace_root_skips_inaccessible_child_directory(monkeypatch, tmp_path: Path) -> None:
+def test_resolve_workspace_root_skips_inaccessible_child_directory(
+    monkeypatch, tmp_path: Path
+) -> None:
     cwd = tmp_path / "cwd"
     cwd.mkdir()
     blocked = cwd / "blocked"

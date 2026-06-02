@@ -5,8 +5,15 @@ from __future__ import annotations
 import typer
 
 from keywharf.commands.context import get_manager_config
-from keywharf.commands.repo.helpers import reject_option_and_clear_flag, run_host_repo_mutation
-from keywharf.commands.repo.output import emit_auth, emit_auth_list, emit_host_repo_mutation
+from keywharf.commands.repo.helpers import (
+    reject_option_and_clear_flag,
+    run_host_repo_mutation,
+)
+from keywharf.commands.repo.output import (
+    emit_auth,
+    emit_auth_list,
+    emit_host_repo_mutation,
+)
 from keywharf.services.host_auth_editor import (
     add_auth_option,
     get_auth_option,
@@ -69,7 +76,9 @@ def add_auth_command(
     ),
     comment: str | None = typer.Option(None, "--comment", help="Optional authentication comment."),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
-    sudo: bool = typer.Option(False, "--sudo", help="Re-exec the full command via sudo when root is required."),
+    sudo: bool = typer.Option(
+        False, "--sudo", help="Re-exec the full command via sudo when root is required."
+    ),
 ) -> None:
     """Add one named authentication option to one host."""
 
@@ -94,7 +103,9 @@ def update_auth_command(
     ctx: typer.Context,
     server_name: str = typer.Argument(..., help="Host name to update."),
     auth_name: str = typer.Argument(..., help="Existing authentication name to update."),
-    new_name: str | None = typer.Option(None, "--new-name", help="Rename the authentication option."),
+    new_name: str | None = typer.Option(
+        None, "--new-name", help="Rename the authentication option."
+    ),
     user: str | None = typer.Option(None, "--user", help="Replace the SSH user."),
     clear_user: bool = typer.Option(False, "--clear-user", help="Clear the SSH user."),
     identity_file: str | None = typer.Option(
@@ -107,10 +118,16 @@ def update_auth_command(
         "--clear-identity-file",
         help="Clear the IdentityFile path.",
     ),
-    comment: str | None = typer.Option(None, "--comment", help="Replace the authentication comment."),
-    clear_comment: bool = typer.Option(False, "--clear-comment", help="Clear the authentication comment."),
+    comment: str | None = typer.Option(
+        None, "--comment", help="Replace the authentication comment."
+    ),
+    clear_comment: bool = typer.Option(
+        False, "--clear-comment", help="Clear the authentication comment."
+    ),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
-    sudo: bool = typer.Option(False, "--sudo", help="Re-exec the full command via sudo when root is required."),
+    sudo: bool = typer.Option(
+        False, "--sudo", help="Re-exec the full command via sudo when root is required."
+    ),
 ) -> None:
     """Update one named authentication option on one host."""
 
@@ -159,7 +176,9 @@ def remove_auth_command(
     server_name: str = typer.Argument(..., help="Host name to update."),
     auth_name: str = typer.Argument(..., help="Authentication name to remove."),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
-    sudo: bool = typer.Option(False, "--sudo", help="Re-exec the full command via sudo when root is required."),
+    sudo: bool = typer.Option(
+        False, "--sudo", help="Re-exec the full command via sudo when root is required."
+    ),
 ) -> None:
     """Remove one named authentication option from one host."""
 

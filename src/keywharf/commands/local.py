@@ -18,7 +18,6 @@ from keywharf.commands.output import (
 from keywharf.domain.results import LocalHostStatus
 from keywharf.services.local_view import get_local_status, list_local_statuses
 
-
 app = typer.Typer(
     name="local",
     no_args_is_help=True,
@@ -35,7 +34,9 @@ def list_local(
         "-p",
         help="Regex to search host names (re.search).",
     ),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show desired/current host blocks."),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show desired/current host blocks."
+    ),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
 ) -> None:
     try:
@@ -118,4 +119,3 @@ def _render_status_detail(item: LocalHostStatus) -> None:
     if item.current_host is not None:
         console.print("Current managed host block:")
         console.print(item.current_host.to_string(0))
-

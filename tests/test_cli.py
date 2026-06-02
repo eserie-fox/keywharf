@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 from typer.testing import CliRunner
 
 from keywharf.cli import app
 from keywharf.version import __version__
-
 
 RUNNER = CliRunner()
 
@@ -108,11 +107,7 @@ def test_main_exits_cleanly_for_keywharf_errors(tmp_path: Path) -> None:
     env = os.environ.copy()
     pythonpath = str(repo_root / "src")
     existing_pythonpath = env.get("PYTHONPATH")
-    env["PYTHONPATH"] = (
-        f"{pythonpath}:{existing_pythonpath}"
-        if existing_pythonpath
-        else pythonpath
-    )
+    env["PYTHONPATH"] = f"{pythonpath}:{existing_pythonpath}" if existing_pythonpath else pythonpath
 
     result = subprocess.run(
         [

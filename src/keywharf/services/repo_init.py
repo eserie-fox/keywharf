@@ -8,10 +8,13 @@ from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.config.resources import render_template
 from keywharf.domain.errors import KeywharfError
 from keywharf.domain.results import HostRepoInitResult
-from keywharf.services.privilege import can_write_directory, can_write_file, root_owned_hint
+from keywharf.services.privilege import (
+    can_write_directory,
+    can_write_file,
+    root_owned_hint,
+)
 from keywharf.storage.host_repo import host_repo_config_path
 from keywharf.storage.json_store import write_json_value
-
 
 HOST_REPO_GITIGNORE_TEMPLATE = "host_repo_gitignore.j2"
 
@@ -57,7 +60,9 @@ def initialize_host_repo(config: ResolvedManagerConfig) -> HostRepoInitResult:
     )
 
 
-def analyze_host_repo_init_root_requirements(config: ResolvedManagerConfig) -> list[str]:
+def analyze_host_repo_init_root_requirements(
+    config: ResolvedManagerConfig,
+) -> list[str]:
     """Return concrete privilege reasons for bootstrapping the host repo skeleton."""
 
     host_repo_path = config.host_repo_path
@@ -66,13 +71,13 @@ def analyze_host_repo_init_root_requirements(config: ResolvedManagerConfig) -> l
 
     if host_repo_path.exists():
         if not can_write_directory(host_repo_path):
+            hint = root_owned_hint(host_repo_path)
             reasons.append(
-                f"host repo path is not writable by current user: {host_repo_path}{root_owned_hint(host_repo_path)}"
+                f"host repo path is not writable by current user: {host_repo_path}{hint}"
             )
     elif not can_write_directory(host_repo_path):
-        reasons.append(
-            f"host repo path is not creatable by current user: {host_repo_path}{root_owned_hint(host_repo_path.parent)}"
-        )
+        hint = root_owned_hint(host_repo_path.parent)
+        reasons.append(f"host repo path is not creatable by current user: {host_repo_path}{hint}")
 
     for path, label in (
         (config_path, "host repo config"),
@@ -83,13 +88,11 @@ def analyze_host_repo_init_root_requirements(config: ResolvedManagerConfig) -> l
             continue
         if path.name == "keys":
             if not can_write_directory(path):
-                reasons.append(
-                    f"{label} is not creatable by current user: {path}{root_owned_hint(path.parent)}"
-                )
+                hint = root_owned_hint(path.parent)
+                reasons.append(f"{label} is not creatable by current user: {path}{hint}")
             continue
         if not can_write_file(path):
-            reasons.append(
-                f"{label} path is not writable by current user: {path}{root_owned_hint(path.parent)}"
-            )
+            hint = root_owned_hint(path.parent)
+            reasons.append(f"{label} path is not writable by current user: {path}{hint}")
 
     return reasons

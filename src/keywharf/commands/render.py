@@ -18,4 +18,3 @@ def register(app: typer.Typer) -> None:
         """Render the desired managed SSH config without writing files."""
 
         emit_render_result(render_selected_state(get_manager_config(ctx)), json_output=json_output)
-

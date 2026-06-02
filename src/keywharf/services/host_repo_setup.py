@@ -10,9 +10,11 @@ from keywharf.storage.host_repo import host_repo_config_path
 def missing_host_repo_config_message(config: ResolvedManagerConfig) -> str:
     return (
         f"Host repo config not found at {host_repo_config_path(config)}. "
-        f"If you already have a host repo remote URL, set `host_repo_remote_url` in {config.config_path} "
+        "If you already have a host repo remote URL, set `host_repo_remote_url` in "
+        f"{config.config_path} "
         f"and run 'keywharf --workspace {config.workspace_root} repo sync'. "
-        f"If you are starting from scratch, run 'keywharf --workspace {config.workspace_root} repo init'."
+        "If you are starting from scratch, run "
+        f"'keywharf --workspace {config.workspace_root} repo init'."
     )
 
 
@@ -25,7 +27,8 @@ def ensure_host_repo_remote_url_is_configured(config: ResolvedManagerConfig) -> 
         f"`host_repo_remote_url` is not configured in {config.config_path}. "
         f"If you already have a host repo remote URL, set it and run "
         f"'keywharf --workspace {config.workspace_root} repo sync'. "
-        f"If you are starting from scratch, run 'keywharf --workspace {config.workspace_root} repo init'.",
+        "If you are starting from scratch, run "
+        f"'keywharf --workspace {config.workspace_root} repo init'.",
         exit_code=2,
     )
 

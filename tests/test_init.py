@@ -7,7 +7,6 @@ from typer.testing import CliRunner
 from keywharf.cli import app
 from tests.support import load_config, read_json
 
-
 RUNNER = CliRunner()
 
 
@@ -43,7 +42,10 @@ def test_init_creates_workspace_from_package_resources(tmp_path: Path) -> None:
     assert config.host_repo_path.exists()
     assert not config.managed_config_path.parent.exists()
     assert not config.managed_keys_dir.exists()
-    assert read_json(workspace_root / "state" / "state.json") == {"version": 1, "selected_hosts": []}
+    assert read_json(workspace_root / "state" / "state.json") == {
+        "version": 1,
+        "selected_hosts": [],
+    }
 
     assert f"Created workspace: {workspace_root.resolve()}" in result.output
     assert str((workspace_root / "KEYWHARF_WORKSPACE").resolve()) in result.output

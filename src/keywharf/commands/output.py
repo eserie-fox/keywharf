@@ -17,7 +17,6 @@ from keywharf.domain.models import (
 )
 from keywharf.domain.results import RenderResult, ValidationResult
 
-
 console = Console()
 
 

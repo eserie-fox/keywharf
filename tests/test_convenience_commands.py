@@ -17,7 +17,6 @@ from tests.support import (
     write_state_file,
 )
 
-
 RUNNER = CliRunner()
 
 

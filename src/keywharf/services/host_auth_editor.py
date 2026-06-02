@@ -20,7 +20,9 @@ from keywharf.services.host_repo_editor_common import (
 from keywharf.storage.host_repo import host_repo_config_path
 
 
-def list_auth_options(config: ResolvedManagerConfig, server_name: str) -> list[HostAuthenticationOption]:
+def list_auth_options(
+    config: ResolvedManagerConfig, server_name: str
+) -> list[HostAuthenticationOption]:
     _, host_definition = find_host_index(load_host_definitions_or_raise(config), server_name)
     return host_definition.authentication
 
@@ -55,7 +57,8 @@ def add_auth_option(
     clean_identity_file = clean_optional_setter(identity_file, label="identity file")
     if clean_user is None and clean_identity_file is None:
         raise KeywharfError(
-            f"Authentication '{clean_auth_name}' for host '{server_name}' must set user or identity file."
+            f"Authentication '{clean_auth_name}' for host '{server_name}' must set user "
+            "or identity file."
         )
 
     auth = HostAuthenticationOption(
@@ -116,7 +119,8 @@ def update_auth_option(
 
     if auth.user is None and auth.identity_file is None:
         raise KeywharfError(
-            f"Authentication '{original_name}' for host '{server_name}' must set user or identity file."
+            f"Authentication '{original_name}' for host '{server_name}' must set user "
+            "or identity file."
         )
 
     if updated.to_dict() == current.to_dict():

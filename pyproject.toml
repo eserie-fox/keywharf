@@ -22,16 +22,16 @@ classifiers = [
     "Topic :: System :: Systems Administration",
 ]
 dependencies = [
-    "jinja2>=3.1,<4",
-    "pydantic>=2.7,<3",
-    "rich>=13",
-    "typer>=0.12",
+    "jinja2>=3.1",
+    "pydantic>=2.7",
+    "rich>=13.8",
+    "typer>=0.26",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7",
-    "ruff>=0.5",
+    "pytest>=8",
+    "ruff>=0.14",
     "mypy>=1.8",
 ]
 
@@ -55,3 +55,22 @@ version = {attr = "keywharf.version.__version__"}
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["keywharf"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["typer.Option", "typer.Argument"]

@@ -93,4 +93,3 @@ def _format_privilege_message(
         lines.append(f"Retry with: {retry_command}")
         lines.append(f"Or run manually: sudo {manual_command}")
     return "\n".join(lines)
-

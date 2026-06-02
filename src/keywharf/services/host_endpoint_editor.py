@@ -105,7 +105,9 @@ def update_endpoint(
         endpoint.comment = clean_optional_setter(comment, label="comment")
 
     if endpoint.hostname is None:
-        raise KeywharfError(f"Endpoint '{original_name}' for host '{server_name}' must set HostName.")
+        raise KeywharfError(
+            f"Endpoint '{original_name}' for host '{server_name}' must set HostName."
+        )
 
     if updated.to_dict() == current.to_dict():
         return HostRepoMutationResult(

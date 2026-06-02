@@ -11,10 +11,12 @@ from keywharf.commands.context import build_cli_state
 from keywharf.domain.errors import KeywharfError
 from keywharf.version import __version__
 
-
 app = typer.Typer(
     name="keywharf",
-    help="Select SSH hosts from a host repo into local desired state, then render/apply keywharf managed SSH config fragments.",
+    help=(
+        "Select SSH hosts from a host repo into local desired state, then render/apply "
+        "keywharf managed SSH config fragments."
+    ),
     invoke_without_command=True,
 )
 
@@ -26,7 +28,10 @@ def callback(
         None,
         "--config",
         "-c",
-        help="Path to the keywharf config.json file (defaults to resolved workspace root/config.json).",
+        help=(
+            "Path to the keywharf config.json file (defaults to resolved workspace "
+            "root/config.json)."
+        ),
         dir_okay=False,
         exists=False,
         readable=True,
@@ -68,7 +73,7 @@ def main() -> None:
         app()
     except KeywharfError as exc:
         typer.echo(str(exc), err=True)
-        raise SystemExit(exc.exit_code)
+        raise SystemExit(exc.exit_code) from None
 
 
 if __name__ == "__main__":

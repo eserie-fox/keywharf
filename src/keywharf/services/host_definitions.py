@@ -26,7 +26,9 @@ def load_host_definition_list(config: ResolvedManagerConfig) -> list[HostDefinit
     return [HostDefinition.from_dict(item) for item in load_host_repo_entries(config)]
 
 
-def load_host_definition_map(config: ResolvedManagerConfig) -> dict[str, HostDefinition]:
+def load_host_definition_map(
+    config: ResolvedManagerConfig,
+) -> dict[str, HostDefinition]:
     mapping: dict[str, HostDefinition] = {}
     for host_definition in load_host_definition_list(config):
         if not host_definition.server_name:
@@ -83,9 +85,7 @@ def validate_host_repo_structure(
 
         for auth in host_definition.authentication:
             if auth.user is None and auth.identity_file is None:
-                errors.append(
-                    f"Authentication for '{server_name}' must set User or IdentityFile."
-                )
+                errors.append(f"Authentication for '{server_name}' must set User or IdentityFile.")
             if not auth.identity_file:
                 continue
             identity_path = config.resolve_from_host_repo(auth.identity_file)
@@ -95,7 +95,9 @@ def validate_host_repo_structure(
     return ValidationResult(ok=not errors, errors=errors)
 
 
-def collect_incomplete_host_errors(host_definitions: list[HostDefinition]) -> tuple[list[str], set[str]]:
+def collect_incomplete_host_errors(
+    host_definitions: list[HostDefinition],
+) -> tuple[list[str], set[str]]:
     errors: list[str] = []
     incomplete_hosts: set[str] = set()
     for host_definition in host_definitions:
@@ -278,9 +280,7 @@ def _resolve_named_option(
         )
 
     matches = [
-        (index, option)
-        for index, option in enumerate(options)
-        if option.name == requested_name
+        (index, option) for index, option in enumerate(options) if option.name == requested_name
     ]
     if not matches:
         raise KeywharfError(f"Config '{server_name}' has no {label} named '{requested_name}'.")
@@ -339,10 +339,12 @@ def _selection_incomplete_host_errors(
     errors = [_incomplete_host_error(server_name, host_definition) or ""]
     if missing_endpoint:
         errors.append(
-            f"Run 'keywharf repo host endpoint add {server_name} <endpoint_name> --hostname <host>'."
+            f"Run 'keywharf repo host endpoint add {server_name} <endpoint_name> "
+            "--hostname <host>'."
         )
     if missing_auth:
         errors.append(
-            f"Run 'keywharf repo host auth add {server_name} <auth_name> [--user <user>] [--identity-file <path>]'."
+            f"Run 'keywharf repo host auth add {server_name} <auth_name> "
+            "[--user <user>] [--identity-file <path>]'."
         )
     return errors

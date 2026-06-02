@@ -4,7 +4,17 @@ from __future__ import annotations
 
 import typer
 
-from keywharf.commands import apply, convenience, deselect, init, install_include, local, render, select, validate
+from keywharf.commands import (
+    apply,
+    convenience,
+    deselect,
+    init,
+    install_include,
+    local,
+    render,
+    select,
+    validate,
+)
 from keywharf.commands.repo.group import app as repo_app
 
 

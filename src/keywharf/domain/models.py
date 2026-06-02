@@ -36,7 +36,7 @@ class SelectedHostState:
     authentication_name: str | None = None
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "SelectedHostState":
+    def from_dict(cls, payload: dict[str, Any]) -> SelectedHostState:
         server_name = _clean_string(payload.get("server_name"))
         if server_name is None:
             raise ValueError("selected host entry is missing server_name")
@@ -60,11 +60,11 @@ class LocalState:
     selected_hosts: list[SelectedHostState] = field(default_factory=list)
 
     @classmethod
-    def empty(cls) -> "LocalState":
+    def empty(cls) -> LocalState:
         return cls()
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "LocalState":
+    def from_dict(cls, payload: dict[str, Any]) -> LocalState:
         version = int(payload.get("version", STATE_SCHEMA_VERSION))
         selected_hosts_payload = payload.get("selected_hosts", [])
         if not isinstance(selected_hosts_payload, list):
@@ -118,7 +118,7 @@ class HostEndpointOption:
     comment: str | None = None
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "HostEndpointOption":
+    def from_dict(cls, payload: dict[str, Any]) -> HostEndpointOption:
         return cls(
             name=_clean_string(payload.get("EndPointName")),
             hostname=_clean_string(payload.get("HostName")),
@@ -147,7 +147,7 @@ class HostAuthenticationOption:
     comment: str | None = None
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "HostAuthenticationOption":
+    def from_dict(cls, payload: dict[str, Any]) -> HostAuthenticationOption:
         return cls(
             name=_clean_string(payload.get("AuthenticationName")),
             user=_clean_string(payload.get("User")),
@@ -175,7 +175,7 @@ class HostExtraConfig:
     comment: str | None = None
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "HostExtraConfig":
+    def from_dict(cls, payload: dict[str, Any]) -> HostExtraConfig:
         return cls(
             key=_clean_string(payload.get("Key")),
             value=_clean_string(payload.get("Value")),
@@ -202,21 +202,17 @@ class HostDefinition:
     extra_config: list[HostExtraConfig] = field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "HostDefinition":
+    def from_dict(cls, payload: dict[str, Any]) -> HostDefinition:
         return cls(
             server_name=_clean_string(payload.get("ServerName")),
             comment=_clean_string(payload.get("Comment")),
-            endpoints=[
-                HostEndpointOption.from_dict(item)
-                for item in payload.get("Endpoint", [])
-            ],
+            endpoints=[HostEndpointOption.from_dict(item) for item in payload.get("Endpoint", [])],
             authentication=[
                 HostAuthenticationOption.from_dict(item)
                 for item in payload.get("Authentication", [])
             ],
             extra_config=[
-                HostExtraConfig.from_dict(item)
-                for item in payload.get("ExtraConfig", [])
+                HostExtraConfig.from_dict(item) for item in payload.get("ExtraConfig", [])
             ],
         )
 

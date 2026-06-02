@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import shutil
 import subprocess
+from pathlib import Path
 
 from typer.testing import CliRunner
 
 from keywharf.cli import app
 from keywharf.domain.errors import KeywharfError
 from tests.support import (
-    auth_payload,
-    endpoint_payload,
     host_repo_payload,
     host_shell_payload,
     load_config,
@@ -24,7 +22,6 @@ from tests.support import (
     write_manager_config,
     write_state_file,
 )
-
 
 RUNNER = CliRunner()
 
@@ -58,7 +55,9 @@ def _create_bare_host_repo_remote(base_dir: Path) -> Path:
     return remote_repo
 
 
-def test_repo_init_bootstraps_local_host_repo_skeleton_without_git(tmp_path: Path) -> None:
+def test_repo_init_bootstraps_local_host_repo_skeleton_without_git(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)
@@ -91,7 +90,9 @@ def test_repo_host_add_creates_shell_and_emits_guidance(tmp_path: Path) -> None:
             "demo host",
         ],
     )
-    list_result = RUNNER.invoke(app, ["--config", str(config_path), "repo", "host", "list", "--json"])
+    list_result = RUNNER.invoke(
+        app, ["--config", str(config_path), "repo", "host", "list", "--json"]
+    )
     show_result = RUNNER.invoke(
         app,
         ["--config", str(config_path), "repo", "host", "show", "demo", "--json"],
@@ -141,7 +142,11 @@ def test_repo_host_update_changes_top_level_fields_only(tmp_path: Path) -> None:
     assert payload["host"]["ServerName"] == "renamed"
     assert payload["host"]["Comment"] == "renamed host"
     assert read_json(config.host_repo_path / "config.json") == [
-        {"ServerName": "renamed", "Comment": "renamed host", "ExtraConfig": [{"Key": "ProxyJump", "Value": "bastion", "Comment": "optional hop"}]}
+        {
+            "ServerName": "renamed",
+            "Comment": "renamed host",
+            "ExtraConfig": [{"Key": "ProxyJump", "Value": "bastion", "Comment": "optional hop"}],
+        }
     ]
 
 
@@ -183,7 +188,11 @@ def test_repo_host_remove_warns_when_local_state_becomes_stale(tmp_path: Path) -
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="public",
+                    authentication_name="home",
+                )
             ]
         ),
     )
@@ -198,7 +207,9 @@ def test_repo_host_remove_warns_when_local_state_becomes_stale(tmp_path: Path) -
     assert read_json(config.host_repo_path / "config.json") == []
 
 
-def test_repo_host_endpoint_add_list_show_update_remove_and_persist_comment(tmp_path: Path) -> None:
+def test_repo_host_endpoint_add_list_show_update_remove_and_persist_comment(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)
@@ -223,11 +234,30 @@ def test_repo_host_endpoint_add_list_show_update_remove_and_persist_comment(tmp_
     )
     list_result = RUNNER.invoke(
         app,
-        ["--config", str(config_path), "repo", "host", "endpoint", "list", "demo", "--json"],
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "endpoint",
+            "list",
+            "demo",
+            "--json",
+        ],
     )
     show_result = RUNNER.invoke(
         app,
-        ["--config", str(config_path), "repo", "host", "endpoint", "show", "demo", "public", "--json"],
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "endpoint",
+            "show",
+            "demo",
+            "public",
+            "--json",
+        ],
     )
     update_result = RUNNER.invoke(
         app,
@@ -294,7 +324,9 @@ def test_repo_host_endpoint_add_list_show_update_remove_and_persist_comment(tmp_
     ]
 
 
-def test_repo_host_endpoint_update_supports_clear_flags_and_warns_about_stale_selection(tmp_path: Path) -> None:
+def test_repo_host_endpoint_update_supports_clear_flags_and_warns_about_stale_selection(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)
@@ -307,7 +339,11 @@ def test_repo_host_endpoint_update_supports_clear_flags_and_warns_about_stale_se
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="public",
+                    authentication_name="home",
+                )
             ]
         ),
     )
@@ -381,7 +417,9 @@ def test_repo_host_endpoint_update_rejects_port_clear_conflict(tmp_path: Path) -
     assert "--port cannot be used with --clear-port" in conflict_result.output
 
 
-def test_repo_host_auth_add_list_show_update_remove_and_persist_comment(tmp_path: Path) -> None:
+def test_repo_host_auth_add_list_show_update_remove_and_persist_comment(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)
@@ -410,11 +448,30 @@ def test_repo_host_auth_add_list_show_update_remove_and_persist_comment(tmp_path
     )
     list_result = RUNNER.invoke(
         app,
-        ["--config", str(config_path), "repo", "host", "auth", "list", "demo", "--json"],
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "auth",
+            "list",
+            "demo",
+            "--json",
+        ],
     )
     show_result = RUNNER.invoke(
         app,
-        ["--config", str(config_path), "repo", "host", "auth", "show", "demo", "home", "--json"],
+        [
+            "--config",
+            str(config_path),
+            "repo",
+            "host",
+            "auth",
+            "show",
+            "demo",
+            "home",
+            "--json",
+        ],
     )
     update_result = RUNNER.invoke(
         app,
@@ -514,7 +571,9 @@ def test_repo_host_auth_update_rejects_conflicts_and_empty_auth(tmp_path: Path) 
     write_identity_file(config.host_repo_path)
     write_host_repo_config(
         config.host_repo_path,
-        payload=[host_shell_payload(),],
+        payload=[
+            host_shell_payload(),
+        ],
     )
     add_result = RUNNER.invoke(
         app,
@@ -585,7 +644,11 @@ def test_repo_host_auth_update_warns_when_selected_name_changes(tmp_path: Path) 
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="public",
+                    authentication_name="home",
+                )
             ]
         ),
     )
@@ -622,7 +685,9 @@ def test_repo_sync_errors_when_host_repo_remote_url_is_null(tmp_path: Path) -> N
     assert "repo init" in str(result.exception)
 
 
-def test_repo_sync_clones_into_existing_empty_workspace_repo_directory(tmp_path: Path) -> None:
+def test_repo_sync_clones_into_existing_empty_workspace_repo_directory(
+    tmp_path: Path,
+) -> None:
     remote_repo = _create_bare_host_repo_remote(tmp_path / "remote-source")
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(
@@ -641,7 +706,9 @@ def test_repo_sync_clones_into_existing_empty_workspace_repo_directory(tmp_path:
     assert f"Synced host repo into {config.host_repo_path}." in result.output
 
 
-def test_repo_sync_fails_with_actionable_message_for_bootstrap_host_repo(tmp_path: Path) -> None:
+def test_repo_sync_fails_with_actionable_message_for_bootstrap_host_repo(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(
         workspace_root / "config.json",

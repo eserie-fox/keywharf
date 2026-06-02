@@ -10,8 +10,11 @@ from keywharf.config.resources import read_text, render_template
 from keywharf.domain.errors import KeywharfError
 from keywharf.domain.results import InitResult
 from keywharf.runtime.paths import WORKSPACE_MARKER
-from keywharf.services.privilege import can_write_directory, can_write_file, root_owned_hint
-
+from keywharf.services.privilege import (
+    can_write_directory,
+    can_write_file,
+    root_owned_hint,
+)
 
 EMPTY_STATE_RESOURCE_SPEC = "pkg://keywharf/templates/init_state.json"
 WORKSPACE_README_TEMPLATE = "workspace_README.md.j2"
@@ -136,12 +139,16 @@ def analyze_init_root_requirements(
 
     if not resolved_workspace_root.exists():
         if not can_write_directory(resolved_workspace_root):
+            hint = root_owned_hint(resolved_workspace_root.parent)
             reasons.append(
-                f"workspace target directory is not creatable by current user: {resolved_workspace_root}{root_owned_hint(resolved_workspace_root.parent)}"
+                "workspace target directory is not creatable by current user: "
+                f"{resolved_workspace_root}{hint}"
             )
     elif not can_write_directory(resolved_workspace_root):
+        hint = root_owned_hint(resolved_workspace_root)
         reasons.append(
-            f"workspace target directory is not writable by current user: {resolved_workspace_root}{root_owned_hint(resolved_workspace_root)}"
+            "workspace target directory is not writable by current user: "
+            f"{resolved_workspace_root}{hint}"
         )
 
     for directory, label in (
@@ -150,13 +157,11 @@ def analyze_init_root_requirements(
     ):
         if directory.exists():
             if not can_write_directory(directory):
-                reasons.append(
-                    f"{label} is not writable by current user: {directory}{root_owned_hint(directory)}"
-                )
+                hint = root_owned_hint(directory)
+                reasons.append(f"{label} is not writable by current user: {directory}{hint}")
         elif not can_write_directory(directory):
-            reasons.append(
-                f"{label} is not creatable by current user: {directory}{root_owned_hint(directory.parent)}"
-            )
+            hint = root_owned_hint(directory.parent)
+            reasons.append(f"{label} is not creatable by current user: {directory}{hint}")
 
     for path, label in (
         (marker_path, "workspace marker"),
@@ -166,8 +171,7 @@ def analyze_init_root_requirements(
         (resolved_workspace_root / ".gitignore", "workspace gitignore"),
     ):
         if not path.exists() and not can_write_file(path):
-            reasons.append(
-                f"{label} path is not writable by current user: {path}{root_owned_hint(path.parent)}"
-            )
+            hint = root_owned_hint(path.parent)
+            reasons.append(f"{label} path is not writable by current user: {path}{hint}")
 
     return reasons

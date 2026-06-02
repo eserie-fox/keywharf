@@ -17,7 +17,9 @@ def sync_host_repo(config: ResolvedManagerConfig) -> None:
     clone_or_sync_repository(host_repo_remote_url, config.host_repo_path)
 
 
-def analyze_host_repo_sync_root_requirements(config: ResolvedManagerConfig) -> list[str]:
+def analyze_host_repo_sync_root_requirements(
+    config: ResolvedManagerConfig,
+) -> list[str]:
     """Return concrete privilege reasons for host-repo mutation."""
 
     ensure_host_repo_remote_url_is_configured(config)
@@ -26,12 +28,12 @@ def analyze_host_repo_sync_root_requirements(config: ResolvedManagerConfig) -> l
     if config.host_repo_path.exists():
         if can_write_directory(config.host_repo_path):
             return []
-        return [
-            f"host repo path is not writable by current user: {config.host_repo_path}{root_owned_hint(config.host_repo_path)}"
-        ]
+        hint = root_owned_hint(config.host_repo_path)
+        return [f"host repo path is not writable by current user: {config.host_repo_path}{hint}"]
 
     if can_write_directory(config.host_repo_path.parent):
         return []
+    hint = root_owned_hint(config.host_repo_path.parent)
     return [
-        f"host repo parent is not writable by current user: {config.host_repo_path.parent}{root_owned_hint(config.host_repo_path.parent)}"
+        f"host repo parent is not writable by current user: {config.host_repo_path.parent}{hint}"
     ]

@@ -208,5 +208,5 @@ Runtime requirements:
 - [`docs/cli.md`](docs/cli.md)
 - [`docs/development.md`](docs/development.md)
 - [`docs/release.md`](docs/release.md)
-- [`docs/release-notes/1.0.4.md`](docs/release-notes/1.0.4.md)
+- [`docs/release-notes/1.0.5.md`](docs/release-notes/1.0.5.md)
 - [`CHANGELOG.md`](CHANGELOG.md)

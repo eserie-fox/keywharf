@@ -7,10 +7,16 @@ import json
 import typer
 
 from keywharf.commands._invocation import build_command_invocation
-from keywharf.commands._privilege import maybe_reexec_with_sudo, raise_for_missing_privileges
+from keywharf.commands._privilege import (
+    maybe_reexec_with_sudo,
+    raise_for_missing_privileges,
+)
 from keywharf.commands.context import get_manager_config
 from keywharf.commands.output import emit_render_result
-from keywharf.services.apply import analyze_apply_root_requirements, apply_selected_state
+from keywharf.services.apply import (
+    analyze_apply_root_requirements,
+    apply_selected_state,
+)
 from keywharf.services.render import render_selected_state
 
 
@@ -78,4 +84,3 @@ def register(app: typer.Typer) -> None:
             typer.echo(f"Copied keys: {len(result.copied_keys)}")
         if result.deleted_keys:
             typer.echo(f"Deleted stale keys: {len(result.deleted_keys)}")
-

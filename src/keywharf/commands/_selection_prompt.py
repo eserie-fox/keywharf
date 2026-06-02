@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 
-import click
 import typer
 
 from keywharf.domain.errors import KeywharfError
@@ -67,19 +66,29 @@ def _complete_option_name(
     if not _supports_interactive_selection():
         available = ", ".join(available_names)
         raise KeywharfError(
-            f"Config '{server_name}' has multiple {label} options and interactive selection is unavailable. "
+            f"Config '{server_name}' has multiple {label} options and interactive "
+            "selection is unavailable. "
             f"Pass {flag_name} <stable_name>. Available {label} stable names: {available}."
         )
 
     typer.echo(f"Select {label} for '{server_name}':")
     for index, option in enumerate(options, start=1):
         typer.echo(f"{index}. {formatter(option)}")
-    choice = click.prompt(
-        f"Enter {label} number",
-        type=click.IntRange(1, len(options)),
-        show_choices=False,
-    )
+    choice = _prompt_choice(label, len(options))
     return options[choice - 1].name
+
+
+def _prompt_choice(label: str, option_count: int) -> int:
+    while True:
+        raw_choice = typer.prompt(f"Enter {label} number", show_choices=False)
+        try:
+            choice = int(raw_choice)
+        except ValueError:
+            typer.echo(f"Error: '{raw_choice}' is not a valid integer range.", err=True)
+            continue
+        if 1 <= choice <= option_count:
+            return choice
+        typer.echo(f"Error: {choice} is not in the range 1<=x<={option_count}.", err=True)
 
 
 def _supports_interactive_selection() -> bool:
@@ -87,7 +96,7 @@ def _supports_interactive_selection() -> bool:
 
 
 def _stream_is_tty(name: str) -> bool:
-    stream = click.get_text_stream(name)
+    stream = typer.get_text_stream(name)
     isatty = getattr(stream, "isatty", None)
     if isatty is None:
         return False
@@ -97,7 +106,9 @@ def _stream_is_tty(name: str) -> bool:
         return False
 
 
-def _format_endpoint_choice(option: HostEndpointOption | HostAuthenticationOption) -> str:
+def _format_endpoint_choice(
+    option: HostEndpointOption | HostAuthenticationOption,
+) -> str:
     endpoint = _require_endpoint(option)
     parts = [endpoint.name or "-", _format_endpoint_target(endpoint)]
     if endpoint.comment:
@@ -127,13 +138,17 @@ def _format_auth_choice(option: HostEndpointOption | HostAuthenticationOption) -
     return " | ".join(parts)
 
 
-def _require_endpoint(option: HostEndpointOption | HostAuthenticationOption) -> HostEndpointOption:
+def _require_endpoint(
+    option: HostEndpointOption | HostAuthenticationOption,
+) -> HostEndpointOption:
     if isinstance(option, HostEndpointOption):
         return option
     raise TypeError(f"Expected HostEndpointOption, got {type(option)!r}")
 
 
-def _require_auth(option: HostEndpointOption | HostAuthenticationOption) -> HostAuthenticationOption:
+def _require_auth(
+    option: HostEndpointOption | HostAuthenticationOption,
+) -> HostAuthenticationOption:
     if isinstance(option, HostAuthenticationOption):
         return option
     raise TypeError(f"Expected HostAuthenticationOption, got {type(option)!r}")

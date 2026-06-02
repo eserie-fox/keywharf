@@ -8,7 +8,7 @@ from pathlib import Path
 
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.domain.errors import KeywharfError
-from keywharf.domain.models import LocalState, STATE_SCHEMA_VERSION
+from keywharf.domain.models import STATE_SCHEMA_VERSION, LocalState
 from keywharf.storage.json_store import read_json_object
 
 

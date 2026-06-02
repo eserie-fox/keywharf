@@ -5,7 +5,10 @@ from __future__ import annotations
 import typer
 
 from keywharf.commands._invocation import build_command_invocation
-from keywharf.commands._privilege import maybe_reexec_with_sudo, raise_for_missing_privileges
+from keywharf.commands._privilege import (
+    maybe_reexec_with_sudo,
+    raise_for_missing_privileges,
+)
 from keywharf.commands._selection_prompt import complete_selection_names
 from keywharf.commands.context import get_host_definitions, get_manager_config
 from keywharf.services.selections import analyze_select_root_requirements, select_host
@@ -19,12 +22,18 @@ def register(app: typer.Typer) -> None:
         endpoint: str | None = typer.Option(
             None,
             "--endpoint",
-            help="Stable EndPointName to select. Omit to auto-select a singleton endpoint or prompt in an interactive terminal.",
+            help=(
+                "Stable EndPointName to select. Omit to auto-select a singleton endpoint "
+                "or prompt in an interactive terminal."
+            ),
         ),
         auth: str | None = typer.Option(
             None,
             "--auth",
-            help="Stable AuthenticationName to select. Omit to auto-select a singleton authentication or prompt in an interactive terminal.",
+            help=(
+                "Stable AuthenticationName to select. Omit to auto-select a singleton "
+                "authentication or prompt in an interactive terminal."
+            ),
         ),
         sudo: bool = typer.Option(
             False,

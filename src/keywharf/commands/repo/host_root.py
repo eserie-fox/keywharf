@@ -5,8 +5,15 @@ from __future__ import annotations
 import typer
 
 from keywharf.commands.context import get_manager_config
-from keywharf.commands.repo.helpers import reject_option_and_clear_flag, run_host_repo_mutation
-from keywharf.commands.repo.output import emit_host, emit_host_list, emit_host_repo_mutation
+from keywharf.commands.repo.helpers import (
+    reject_option_and_clear_flag,
+    run_host_repo_mutation,
+)
+from keywharf.commands.repo.output import (
+    emit_host,
+    emit_host_list,
+    emit_host_repo_mutation,
+)
 from keywharf.services.host_editor import (
     add_host_definition,
     get_host_definition,
@@ -51,7 +58,9 @@ def add_host_command(
     server_name: str = typer.Argument(..., help="New host name."),
     comment: str | None = typer.Option(None, "--comment", help="Optional host comment."),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
-    sudo: bool = typer.Option(False, "--sudo", help="Re-exec the full command via sudo when root is required."),
+    sudo: bool = typer.Option(
+        False, "--sudo", help="Re-exec the full command via sudo when root is required."
+    ),
 ) -> None:
     """Add one host shell to the host repo."""
 
@@ -76,7 +85,9 @@ def update_host_command(
     comment: str | None = typer.Option(None, "--comment", help="Replace the host comment."),
     clear_comment: bool = typer.Option(False, "--clear-comment", help="Clear the host comment."),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
-    sudo: bool = typer.Option(False, "--sudo", help="Re-exec the full command via sudo when root is required."),
+    sudo: bool = typer.Option(
+        False, "--sudo", help="Re-exec the full command via sudo when root is required."
+    ),
 ) -> None:
     """Update one host shell in the host repo."""
 
@@ -107,7 +118,9 @@ def remove_host_command(
     ctx: typer.Context,
     server_name: str = typer.Argument(..., help="Host name to remove."),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
-    sudo: bool = typer.Option(False, "--sudo", help="Re-exec the full command via sudo when root is required."),
+    sudo: bool = typer.Option(
+        False, "--sudo", help="Re-exec the full command via sudo when root is required."
+    ),
 ) -> None:
     """Remove one host from the host repo."""
 

@@ -18,7 +18,9 @@ from keywharf.ssh_config.render import render_host_config, render_ssh_config
 
 
 def get_identity_file_path(
-    managed_keys_directory: str | Path, server_name: str, original_identifier_file_path: str
+    managed_keys_directory: str | Path,
+    server_name: str,
+    original_identifier_file_path: str,
 ) -> str:
     keys_dir = Path(str(managed_keys_directory)).expanduser()
     return (keys_dir / server_name / Path(original_identifier_file_path).name).as_posix()
@@ -41,12 +43,15 @@ def build_host_config(choice: SSHHostConfigChoice) -> SSHHostConfig:
     if not host.authentication:
         raise KeywharfError(f"Config '{host.server_name}' has no authentication options.")
     if choice.endpoint_id < 0 or choice.endpoint_id >= len(host.endpoints):
+        valid_range = f"0-{len(host.endpoints) - 1}"
         raise KeywharfError(
-            f"Endpoint index out of range for '{host.server_name}'. Valid range: 0-{len(host.endpoints) - 1}."
+            f"Endpoint index out of range for '{host.server_name}'. Valid range: {valid_range}."
         )
     if choice.auth_id < 0 or choice.auth_id >= len(host.authentication):
+        valid_range = f"0-{len(host.authentication) - 1}"
         raise KeywharfError(
-            f"Authentication index out of range for '{host.server_name}'. Valid range: 0-{len(host.authentication) - 1}."
+            f"Authentication index out of range for '{host.server_name}'. "
+            f"Valid range: {valid_range}."
         )
 
     endpoint = host.endpoints[choice.endpoint_id]
@@ -55,7 +60,9 @@ def build_host_config(choice: SSHHostConfigChoice) -> SSHHostConfig:
     identity_target = None
     identity_source = None
     if auth.identity_file:
-        identity_source = choice.manager_config.resolve_from_host_repo(auth.identity_file).as_posix()
+        identity_source = choice.manager_config.resolve_from_host_repo(
+            auth.identity_file
+        ).as_posix()
         identity_target = get_identity_file_path(
             choice.manager_config.managed_keys_dir,
             host.server_name,

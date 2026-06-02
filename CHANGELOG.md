@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 1.0.5 (2026-06-02)
+
+- removed runtime reliance on external `click` imports so Typer 0.26+ environments that use vendored Click no longer fail during CLI startup
+- made sudo retry invocation serialization compatible with Typer-style argument and option parameter objects without external Click type checks
+- kept interactive `select` prompting behavior while replacing `click.IntRange` and `click.get_text_stream` usage with Typer-facing APIs and local range validation
+- added regression coverage for Typer-like invocation parameters and a dependency-scan test that catches undeclared direct runtime imports
+- raised the runtime Typer baseline to `typer>=0.26`, raised Rich to `rich>=13.8`, and changed runtime dependencies to minimum-only constraints with no upper bounds
+- added explicit Ruff configuration for Python 3.11, 100-column formatting, import sorting, Python upgrade checks, Bugbear checks, and Ruff-specific checks
+- raised dev dependency floors to `pytest>=8` and `ruff>=0.14` while keeping minimum-only dependency constraints
+- fixed release-check hygiene issues so full `ruff format --check .` and `ruff check .` can pass on the Python 3.11+ codebase
+- bumped runtime/package version metadata to `1.0.5` and added release documentation
+
 ## 1.0.4 (2026-04-12)
 
 - added high-frequency read-only convenience facade commands: `keywharf list repo`, `keywharf show repo <server>`, `keywharf list local`, and `keywharf show local <server>`
