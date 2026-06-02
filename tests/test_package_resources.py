@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from importlib import resources
 from pathlib import Path
-import tomllib
 
 from keywharf.config.resources import render_template
 
 
 def test_manager_defaults_resource_is_readable() -> None:
     payload = json.loads(
-        resources.files("keywharf").joinpath("config_defaults", "manager.json").read_text(encoding="utf-8")
+        resources.files("keywharf")
+        .joinpath("config_defaults", "manager.json")
+        .read_text(encoding="utf-8")
     )
 
     assert payload["host_repo_remote_url"] is None
@@ -20,14 +22,20 @@ def test_manager_defaults_resource_is_readable() -> None:
 
 def test_init_state_template_resource_is_readable() -> None:
     payload = json.loads(
-        resources.files("keywharf").joinpath("templates", "init_state.json").read_text(encoding="utf-8")
+        resources.files("keywharf")
+        .joinpath("templates", "init_state.json")
+        .read_text(encoding="utf-8")
     )
 
     assert payload == {"version": 1, "selected_hosts": []}
 
 
 def test_jinja_templates_are_packaged_and_renderable() -> None:
-    template_text = resources.files("keywharf").joinpath("templates", "include_block.j2").read_text(encoding="utf-8")
+    template_text = (
+        resources.files("keywharf")
+        .joinpath("templates", "include_block.j2")
+        .read_text(encoding="utf-8")
+    )
 
     assert "include_line" in template_text
     rendered = render_template(

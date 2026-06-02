@@ -13,12 +13,11 @@ from tests.support import (
     read_json,
     selection_payload,
     state_payload,
+    write_host_repo_config,
     write_identity_file,
     write_manager_config,
-    write_host_repo_config,
     write_state_file,
 )
-
 
 RUNNER = CliRunner()
 
@@ -41,23 +40,57 @@ def test_select_writes_state_and_upserts_existing_selection(tmp_path: Path) -> N
         host_repo_path,
         payload=host_repo_payload(
             endpoints=[
-                {"EndPointName": "public", "HostName": "public.example.com", "Port": 22},
-                {"EndPointName": "private", "HostName": "private.example.com", "Port": 22},
+                {
+                    "EndPointName": "public",
+                    "HostName": "public.example.com",
+                    "Port": 22,
+                },
+                {
+                    "EndPointName": "private",
+                    "HostName": "private.example.com",
+                    "Port": 22,
+                },
             ],
             authentications=[
-                {"AuthenticationName": "home", "User": "fox", "IdentityFile": "keys/id_home"},
-                {"AuthenticationName": "work", "User": "fox", "IdentityFile": "keys/id_work"},
+                {
+                    "AuthenticationName": "home",
+                    "User": "fox",
+                    "IdentityFile": "keys/id_home",
+                },
+                {
+                    "AuthenticationName": "work",
+                    "User": "fox",
+                    "IdentityFile": "keys/id_work",
+                },
             ],
         ),
     )
 
     first = RUNNER.invoke(
         app,
-        ["--config", str(config_path), "select", "demo", "--endpoint", "public", "--auth", "home"],
+        [
+            "--config",
+            str(config_path),
+            "select",
+            "demo",
+            "--endpoint",
+            "public",
+            "--auth",
+            "home",
+        ],
     )
     second = RUNNER.invoke(
         app,
-        ["--config", str(config_path), "select", "demo", "--endpoint", "private", "--auth", "work"],
+        [
+            "--config",
+            str(config_path),
+            "select",
+            "demo",
+            "--endpoint",
+            "private",
+            "--auth",
+            "work",
+        ],
     )
 
     assert first.exit_code == 0, first.output
@@ -83,19 +116,44 @@ def test_select_uses_stable_names_not_array_indexes(tmp_path: Path) -> None:
         host_repo_path,
         payload=host_repo_payload(
             endpoints=[
-                {"EndPointName": "public", "HostName": "public.example.com", "Port": 22},
-                {"EndPointName": "private", "HostName": "private.example.com", "Port": 22},
+                {
+                    "EndPointName": "public",
+                    "HostName": "public.example.com",
+                    "Port": 22,
+                },
+                {
+                    "EndPointName": "private",
+                    "HostName": "private.example.com",
+                    "Port": 22,
+                },
             ],
             authentications=[
-                {"AuthenticationName": "home", "User": "fox", "IdentityFile": "keys/id_home"},
-                {"AuthenticationName": "work", "User": "fox", "IdentityFile": "keys/id_work"},
+                {
+                    "AuthenticationName": "home",
+                    "User": "fox",
+                    "IdentityFile": "keys/id_home",
+                },
+                {
+                    "AuthenticationName": "work",
+                    "User": "fox",
+                    "IdentityFile": "keys/id_work",
+                },
             ],
         ),
     )
 
     result = RUNNER.invoke(
         app,
-        ["--config", str(config_path), "select", "demo", "--endpoint", "private", "--auth", "work"],
+        [
+            "--config",
+            str(config_path),
+            "select",
+            "demo",
+            "--endpoint",
+            "private",
+            "--auth",
+            "work",
+        ],
     )
 
     assert result.exit_code == 0, result.output
@@ -120,8 +178,18 @@ def test_select_prompts_for_endpoint_and_auth_when_both_are_ambiguous(
         host_repo_path,
         payload=host_repo_payload(
             endpoints=[
-                {"EndPointName": "public", "HostName": "public.example.com", "Port": 22, "Comment": "public"},
-                {"EndPointName": "private", "HostName": "private.example.com", "Port": 2200, "Comment": "private"},
+                {
+                    "EndPointName": "public",
+                    "HostName": "public.example.com",
+                    "Port": 22,
+                    "Comment": "public",
+                },
+                {
+                    "EndPointName": "private",
+                    "HostName": "private.example.com",
+                    "Port": 2200,
+                    "Comment": "private",
+                },
             ],
             authentications=[
                 {
@@ -176,11 +244,23 @@ def test_select_prompts_only_for_endpoint_when_auth_is_singleton(
         host_repo_path,
         payload=host_repo_payload(
             endpoints=[
-                {"EndPointName": "public", "HostName": "public.example.com", "Port": 22},
-                {"EndPointName": "private", "HostName": "private.example.com", "Port": 2200},
+                {
+                    "EndPointName": "public",
+                    "HostName": "public.example.com",
+                    "Port": 22,
+                },
+                {
+                    "EndPointName": "private",
+                    "HostName": "private.example.com",
+                    "Port": 2200,
+                },
             ],
             authentications=[
-                {"AuthenticationName": "home", "User": "fox", "IdentityFile": "keys/id_home"}
+                {
+                    "AuthenticationName": "home",
+                    "User": "fox",
+                    "IdentityFile": "keys/id_home",
+                }
             ],
         ),
     )
@@ -217,12 +297,18 @@ def test_select_prompts_only_for_auth_when_endpoint_is_singleton(
     write_host_repo_config(
         host_repo_path,
         payload=host_repo_payload(
-            endpoints=[
-                {"EndPointName": "public", "HostName": "public.example.com", "Port": 22}
-            ],
+            endpoints=[{"EndPointName": "public", "HostName": "public.example.com", "Port": 22}],
             authentications=[
-                {"AuthenticationName": "home", "User": "fox", "IdentityFile": "keys/id_home"},
-                {"AuthenticationName": "work", "User": "fox-work", "IdentityFile": "keys/id_work"},
+                {
+                    "AuthenticationName": "home",
+                    "User": "fox",
+                    "IdentityFile": "keys/id_home",
+                },
+                {
+                    "AuthenticationName": "work",
+                    "User": "fox-work",
+                    "IdentityFile": "keys/id_work",
+                },
             ],
         ),
     )
@@ -246,7 +332,9 @@ def test_select_prompts_only_for_auth_when_endpoint_is_singleton(
     ]
 
 
-def test_select_single_endpoint_and_auth_succeeds_without_prompt(tmp_path: Path) -> None:
+def test_select_single_endpoint_and_auth_succeeds_without_prompt(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)
@@ -279,11 +367,23 @@ def test_select_fails_fast_without_prompt_when_endpoint_choice_is_ambiguous_noni
         host_repo_path,
         payload=host_repo_payload(
             endpoints=[
-                {"EndPointName": "public", "HostName": "public.example.com", "Port": 22},
-                {"EndPointName": "private", "HostName": "private.example.com", "Port": 2200},
+                {
+                    "EndPointName": "public",
+                    "HostName": "public.example.com",
+                    "Port": 22,
+                },
+                {
+                    "EndPointName": "private",
+                    "HostName": "private.example.com",
+                    "Port": 2200,
+                },
             ],
             authentications=[
-                {"AuthenticationName": "home", "User": "fox", "IdentityFile": "keys/id_home"}
+                {
+                    "AuthenticationName": "home",
+                    "User": "fox",
+                    "IdentityFile": "keys/id_home",
+                }
             ],
         ),
     )
@@ -293,7 +393,9 @@ def test_select_fails_fast_without_prompt_when_endpoint_choice_is_ambiguous_noni
     assert result.exit_code == 1
     assert "Select endpoint for 'demo':" not in result.output
     assert result.exception is not None
-    assert "multiple endpoint options and interactive selection is unavailable" in str(result.exception)
+    assert "multiple endpoint options and interactive selection is unavailable" in str(
+        result.exception
+    )
     assert "--endpoint <stable_name>" in str(result.exception)
     assert "public, private" in str(result.exception)
 
@@ -310,12 +412,18 @@ def test_select_fails_fast_without_prompt_when_auth_choice_is_ambiguous_noninter
     write_host_repo_config(
         host_repo_path,
         payload=host_repo_payload(
-            endpoints=[
-                {"EndPointName": "public", "HostName": "public.example.com", "Port": 22}
-            ],
+            endpoints=[{"EndPointName": "public", "HostName": "public.example.com", "Port": 22}],
             authentications=[
-                {"AuthenticationName": "home", "User": "fox", "IdentityFile": "keys/id_home"},
-                {"AuthenticationName": "work", "User": "fox-work", "IdentityFile": "keys/id_work"},
+                {
+                    "AuthenticationName": "home",
+                    "User": "fox",
+                    "IdentityFile": "keys/id_home",
+                },
+                {
+                    "AuthenticationName": "work",
+                    "User": "fox-work",
+                    "IdentityFile": "keys/id_work",
+                },
             ],
         ),
     )
@@ -325,7 +433,9 @@ def test_select_fails_fast_without_prompt_when_auth_choice_is_ambiguous_noninter
     assert result.exit_code == 1
     assert "Select authentication for 'demo':" not in result.output
     assert result.exception is not None
-    assert "multiple authentication options and interactive selection is unavailable" in str(result.exception)
+    assert "multiple authentication options and interactive selection is unavailable" in str(
+        result.exception
+    )
     assert "--auth <stable_name>" in str(result.exception)
     assert "home, work" in str(result.exception)
 
@@ -344,12 +454,28 @@ def test_select_reprompts_after_invalid_interactive_choice(
         host_repo_path,
         payload=host_repo_payload(
             endpoints=[
-                {"EndPointName": "public", "HostName": "public.example.com", "Port": 22},
-                {"EndPointName": "private", "HostName": "private.example.com", "Port": 2200},
+                {
+                    "EndPointName": "public",
+                    "HostName": "public.example.com",
+                    "Port": 22,
+                },
+                {
+                    "EndPointName": "private",
+                    "HostName": "private.example.com",
+                    "Port": 2200,
+                },
             ],
             authentications=[
-                {"AuthenticationName": "home", "User": "fox", "IdentityFile": "keys/id_home"},
-                {"AuthenticationName": "work", "User": "fox-work", "IdentityFile": "keys/id_work"},
+                {
+                    "AuthenticationName": "home",
+                    "User": "fox",
+                    "IdentityFile": "keys/id_home",
+                },
+                {
+                    "AuthenticationName": "work",
+                    "User": "fox-work",
+                    "IdentityFile": "keys/id_work",
+                },
             ],
         ),
     )
@@ -378,12 +504,19 @@ def test_deselect_only_updates_state(tmp_path: Path) -> None:
     config = load_config(config_path, workspace_root=workspace_root)
     host_repo_path = config.host_repo_path
     write_identity_file(host_repo_path)
-    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
+    write_host_repo_config(
+        host_repo_path,
+        payload=host_repo_payload(endpoint_name="public", auth_name="home"),
+    )
     write_state_file(
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="public",
+                    authentication_name="home",
+                )
             ]
         ),
     )
@@ -405,7 +538,13 @@ def test_select_rejects_host_without_endpoint_options(tmp_path: Path) -> None:
         payload=[
             {
                 **host_shell_payload(),
-                "Authentication": [{"AuthenticationName": "home", "User": "fox", "IdentityFile": "keys/id_demo"}],
+                "Authentication": [
+                    {
+                        "AuthenticationName": "home",
+                        "User": "fox",
+                        "IdentityFile": "keys/id_demo",
+                    }
+                ],
             }
         ],
     )
@@ -431,14 +570,18 @@ def test_select_rejects_host_without_authentication_options(tmp_path: Path) -> N
         ],
     )
 
-    result = RUNNER.invoke(app, ["--config", str(config_path), "select", "demo", "--endpoint", "public"])
+    result = RUNNER.invoke(
+        app, ["--config", str(config_path), "select", "demo", "--endpoint", "public"]
+    )
 
     assert result.exit_code == 1
     assert "Host 'demo' has no authentication options." in str(result.exception)
     assert "repo host auth add demo <auth_name>" in str(result.exception)
 
 
-def test_select_rejects_host_without_endpoint_or_authentication_options(tmp_path: Path) -> None:
+def test_select_rejects_host_without_endpoint_or_authentication_options(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)

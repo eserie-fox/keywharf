@@ -49,9 +49,12 @@ def add_host_definition(
         name=clean_server_name,
         host=new_host,
         notes=[
-            f"Host '{clean_server_name}' has no endpoint or authentication options yet, so it cannot be selected.",
-            f"Next: keywharf repo host endpoint add {clean_server_name} <endpoint_name> --hostname <host>",
-            f"Next: keywharf repo host auth add {clean_server_name} <auth_name> [--user <user>] [--identity-file <path>]",
+            f"Host '{clean_server_name}' has no endpoint or authentication options yet, "
+            "so it cannot be selected.",
+            f"Next: keywharf repo host endpoint add {clean_server_name} "
+            "<endpoint_name> --hostname <host>",
+            f"Next: keywharf repo host auth add {clean_server_name} <auth_name> "
+            "[--user <user>] [--identity-file <path>]",
         ],
     )
 

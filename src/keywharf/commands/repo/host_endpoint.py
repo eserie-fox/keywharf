@@ -5,8 +5,15 @@ from __future__ import annotations
 import typer
 
 from keywharf.commands.context import get_manager_config
-from keywharf.commands.repo.helpers import reject_option_and_clear_flag, run_host_repo_mutation
-from keywharf.commands.repo.output import emit_endpoint, emit_endpoint_list, emit_host_repo_mutation
+from keywharf.commands.repo.helpers import (
+    reject_option_and_clear_flag,
+    run_host_repo_mutation,
+)
+from keywharf.commands.repo.output import (
+    emit_endpoint,
+    emit_endpoint_list,
+    emit_host_repo_mutation,
+)
 from keywharf.services.host_endpoint_editor import (
     add_endpoint,
     get_endpoint,
@@ -62,10 +69,14 @@ def add_endpoint_command(
     server_name: str = typer.Argument(..., help="Host name to update."),
     endpoint_name: str = typer.Argument(..., help="New endpoint name."),
     hostname: str = typer.Option(..., "--hostname", help="HostName for the endpoint."),
-    port: int | None = typer.Option(None, "--port", min=1, max=65535, help="Optional endpoint port."),
+    port: int | None = typer.Option(
+        None, "--port", min=1, max=65535, help="Optional endpoint port."
+    ),
     comment: str | None = typer.Option(None, "--comment", help="Optional endpoint comment."),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
-    sudo: bool = typer.Option(False, "--sudo", help="Re-exec the full command via sudo when root is required."),
+    sudo: bool = typer.Option(
+        False, "--sudo", help="Re-exec the full command via sudo when root is required."
+    ),
 ) -> None:
     """Add one named endpoint option to one host."""
 
@@ -92,12 +103,18 @@ def update_endpoint_command(
     endpoint_name: str = typer.Argument(..., help="Existing endpoint name to update."),
     new_name: str | None = typer.Option(None, "--new-name", help="Rename the endpoint."),
     hostname: str | None = typer.Option(None, "--hostname", help="Replace the endpoint HostName."),
-    port: int | None = typer.Option(None, "--port", min=1, max=65535, help="Replace the endpoint port."),
+    port: int | None = typer.Option(
+        None, "--port", min=1, max=65535, help="Replace the endpoint port."
+    ),
     clear_port: bool = typer.Option(False, "--clear-port", help="Clear the endpoint port."),
     comment: str | None = typer.Option(None, "--comment", help="Replace the endpoint comment."),
-    clear_comment: bool = typer.Option(False, "--clear-comment", help="Clear the endpoint comment."),
+    clear_comment: bool = typer.Option(
+        False, "--clear-comment", help="Clear the endpoint comment."
+    ),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
-    sudo: bool = typer.Option(False, "--sudo", help="Re-exec the full command via sudo when root is required."),
+    sudo: bool = typer.Option(
+        False, "--sudo", help="Re-exec the full command via sudo when root is required."
+    ),
 ) -> None:
     """Update one named endpoint option on one host."""
 
@@ -139,7 +156,9 @@ def remove_endpoint_command(
     server_name: str = typer.Argument(..., help="Host name to update."),
     endpoint_name: str = typer.Argument(..., help="Endpoint name to remove."),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
-    sudo: bool = typer.Option(False, "--sudo", help="Re-exec the full command via sudo when root is required."),
+    sudo: bool = typer.Option(
+        False, "--sudo", help="Re-exec the full command via sudo when root is required."
+    ),
 ) -> None:
     """Remove one named endpoint option from one host."""
 

@@ -59,16 +59,17 @@ def analyze_select_root_requirements(config: ResolvedManagerConfig) -> list[str]
     reasons: list[str] = []
     host_repo_config = host_repo_config_path(config)
     if host_repo_config.exists() and not can_read_path(host_repo_config):
+        hint = root_owned_hint(host_repo_config)
         reasons.append(
-            f"host repo config is not readable by current user: {host_repo_config}{root_owned_hint(host_repo_config)}"
+            f"host repo config is not readable by current user: {host_repo_config}{hint}"
         )
     if config.state_path.exists() and not can_read_path(config.state_path):
-        reasons.append(
-            f"state file is not readable by current user: {config.state_path}{root_owned_hint(config.state_path)}"
-        )
+        hint = root_owned_hint(config.state_path)
+        reasons.append(f"state file is not readable by current user: {config.state_path}{hint}")
     if not can_write_file(config.state_path):
+        hint = root_owned_hint(config.state_path.parent)
         reasons.append(
-            f"state file path is not writable by current user: {config.state_path}{root_owned_hint(config.state_path.parent)}"
+            f"state file path is not writable by current user: {config.state_path}{hint}"
         )
     return reasons
 
@@ -78,11 +79,11 @@ def analyze_deselect_root_requirements(config: ResolvedManagerConfig) -> list[st
 
     reasons: list[str] = []
     if config.state_path.exists() and not can_read_path(config.state_path):
-        reasons.append(
-            f"state file is not readable by current user: {config.state_path}{root_owned_hint(config.state_path)}"
-        )
+        hint = root_owned_hint(config.state_path)
+        reasons.append(f"state file is not readable by current user: {config.state_path}{hint}")
     if not can_write_file(config.state_path):
+        hint = root_owned_hint(config.state_path.parent)
         reasons.append(
-            f"state file path is not writable by current user: {config.state_path}{root_owned_hint(config.state_path.parent)}"
+            f"state file path is not writable by current user: {config.state_path}{hint}"
         )
     return reasons

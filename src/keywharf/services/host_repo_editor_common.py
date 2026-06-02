@@ -12,30 +12,37 @@ from keywharf.domain.models import (
     HostDefinition,
     HostEndpointOption,
 )
-from keywharf.services.host_definitions import load_host_definition_list, validate_host_repo_structure
+from keywharf.services.host_definitions import (
+    load_host_definition_list,
+    validate_host_repo_structure,
+)
 from keywharf.services.host_repo_setup import missing_host_repo_config_message
 from keywharf.services.privilege import can_read_path, can_write_file, root_owned_hint
 from keywharf.storage.host_repo import host_repo_config_path, write_host_repo_entries
 from keywharf.storage.state_store import load_state
 
 
-def analyze_host_repo_config_write_root_requirements(config: ResolvedManagerConfig) -> list[str]:
+def analyze_host_repo_config_write_root_requirements(
+    config: ResolvedManagerConfig,
+) -> list[str]:
     """Return concrete privilege reasons for mutating the host repo config."""
 
     config_path = host_repo_config_path(config)
     reasons: list[str] = []
     if config_path.exists() and not can_read_path(config_path):
-        reasons.append(
-            f"host repo config is not readable by current user: {config_path}{root_owned_hint(config_path)}"
-        )
+        hint = root_owned_hint(config_path)
+        reasons.append(f"host repo config is not readable by current user: {config_path}{hint}")
     if not can_write_file(config_path):
+        hint = root_owned_hint(config_path.parent)
         reasons.append(
-            f"host repo config path is not writable by current user: {config_path}{root_owned_hint(config_path.parent)}"
+            f"host repo config path is not writable by current user: {config_path}{hint}"
         )
     return reasons
 
 
-def load_host_definitions_or_raise(config: ResolvedManagerConfig) -> list[HostDefinition]:
+def load_host_definitions_or_raise(
+    config: ResolvedManagerConfig,
+) -> list[HostDefinition]:
     try:
         return load_host_definition_list(config)
     except FileNotFoundError as exc:
@@ -173,7 +180,8 @@ def build_selection_warnings(
     for selection in state.selected_hosts:
         if removed_server_name is not None and selection.server_name == removed_server_name:
             warnings.append(
-                f"Local state still selects '{removed_server_name}'. Run 'keywharf validate' and update the selection."
+                f"Local state still selects '{removed_server_name}'. Run "
+                "'keywharf validate' and update the selection."
             )
         if (
             old_server_name is not None
@@ -182,7 +190,8 @@ def build_selection_warnings(
             and selection.server_name == old_server_name
         ):
             warnings.append(
-                f"Local state still refers to host '{old_server_name}'. Run 'keywharf validate' and update the selection."
+                f"Local state still refers to host '{old_server_name}'. Run "
+                "'keywharf validate' and update the selection."
             )
         if (
             target_server_name is not None
@@ -191,7 +200,8 @@ def build_selection_warnings(
             and selection.endpoint_name == removed_endpoint_name
         ):
             warnings.append(
-                f"Local state still refers to endpoint '{removed_endpoint_name}' for '{target_server_name}'. Run 'keywharf validate' and update the selection."
+                f"Local state still refers to endpoint '{removed_endpoint_name}' for "
+                f"'{target_server_name}'. Run 'keywharf validate' and update the selection."
             )
         if (
             target_server_name is not None
@@ -202,7 +212,8 @@ def build_selection_warnings(
             and selection.endpoint_name == old_endpoint_name
         ):
             warnings.append(
-                f"Local state still refers to endpoint '{old_endpoint_name}' for '{target_server_name}'. Run 'keywharf validate' and update the selection."
+                f"Local state still refers to endpoint '{old_endpoint_name}' for "
+                f"'{target_server_name}'. Run 'keywharf validate' and update the selection."
             )
         if (
             target_server_name is not None
@@ -211,7 +222,8 @@ def build_selection_warnings(
             and selection.authentication_name == removed_auth_name
         ):
             warnings.append(
-                f"Local state still refers to authentication '{removed_auth_name}' for '{target_server_name}'. Run 'keywharf validate' and update the selection."
+                f"Local state still refers to authentication '{removed_auth_name}' for "
+                f"'{target_server_name}'. Run 'keywharf validate' and update the selection."
             )
         if (
             target_server_name is not None
@@ -222,7 +234,8 @@ def build_selection_warnings(
             and selection.authentication_name == old_auth_name
         ):
             warnings.append(
-                f"Local state still refers to authentication '{old_auth_name}' for '{target_server_name}'. Run 'keywharf validate' and update the selection."
+                f"Local state still refers to authentication '{old_auth_name}' for "
+                f"'{target_server_name}'. Run 'keywharf validate' and update the selection."
             )
 
     return list(dict.fromkeys(warnings))
@@ -255,6 +268,4 @@ def _ensure_unique_named_option(
         if ignore_index is not None and index == ignore_index:
             continue
         if option.name == option_name:
-            raise KeywharfError(
-                f"Host '{server_name}' already has {label} '{option_name}'."
-            )
+            raise KeywharfError(f"Host '{server_name}' already has {label} '{option_name}'.")

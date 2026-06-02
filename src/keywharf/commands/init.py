@@ -7,7 +7,10 @@ from pathlib import Path
 import typer
 
 from keywharf.commands._invocation import build_command_invocation
-from keywharf.commands._privilege import maybe_reexec_with_sudo, raise_for_missing_privileges
+from keywharf.commands._privilege import (
+    maybe_reexec_with_sudo,
+    raise_for_missing_privileges,
+)
 from keywharf.commands.context import get_cli_state
 from keywharf.domain.errors import KeywharfError
 from keywharf.services.init import analyze_init_root_requirements, initialize_workspace
@@ -45,7 +48,8 @@ def register(app: typer.Typer) -> None:
             raise KeywharfError("`keywharf init` does not accept --config.", exit_code=2)
         if cli_state.workspace_override is not None:
             raise KeywharfError(
-                "`keywharf init` does not accept --workspace. Use `init <workspace_name> --directory <base_dir>`.",
+                "`keywharf init` does not accept --workspace. Use `init <workspace_name> "
+                "--directory <base_dir>`.",
                 exit_code=2,
             )
 
@@ -91,6 +95,15 @@ def register(app: typer.Typer) -> None:
         typer.echo("B. You are starting from scratch:")
         typer.echo(f"- Run: keywharf --workspace {result.workspace_root} repo init")
         typer.echo(f"- Then: keywharf --workspace {result.workspace_root} repo host add <server>")
-        typer.echo(f"- Then: keywharf --workspace {result.workspace_root} repo host endpoint add <server> <endpoint_name> --hostname <host>")
-        typer.echo(f"- Then: keywharf --workspace {result.workspace_root} repo host auth add <server> <auth_name> [--user <user>] [--identity-file <path>]")
-        typer.echo(f"- If you want a real git repo later, run git init / git remote add / commit / push yourself in {result.host_repo_path}.")
+        typer.echo(
+            f"- Then: keywharf --workspace {result.workspace_root} repo host endpoint add "
+            "<server> <endpoint_name> --hostname <host>"
+        )
+        typer.echo(
+            f"- Then: keywharf --workspace {result.workspace_root} repo host auth add "
+            "<server> <auth_name> [--user <user>] [--identity-file <path>]"
+        )
+        typer.echo(
+            "- If you want a real git repo later, run git init / git remote add / "
+            f"commit / push yourself in {result.host_repo_path}."
+        )

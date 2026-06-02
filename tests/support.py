@@ -211,7 +211,9 @@ def host_repo_payload(
     return [payload]
 
 
-def write_host_repo_config(host_repo_path: Path, payload: list[dict[str, Any]] | None = None) -> Path:
+def write_host_repo_config(
+    host_repo_path: Path, payload: list[dict[str, Any]] | None = None
+) -> Path:
     host_repo_path.mkdir(parents=True, exist_ok=True)
     return write_json(
         host_repo_path / "config.json",

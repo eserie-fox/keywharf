@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from keywharf.config.merge import config_deep_merge
 from keywharf.config.models import ManagerConfig
-from keywharf.config.resources import read_json_mapping
 from keywharf.config.resolver import ResolvedManagerConfig, resolve_manager_config
+from keywharf.config.resources import read_json_mapping
 from keywharf.runtime.paths import DEFAULT_CONFIG_FILE_NAME, resolve_workspace_root
-
 
 MANAGER_DEFAULTS_RESOURCE_SPEC = "pkg://keywharf/config_defaults/manager.json"
 
@@ -85,7 +85,8 @@ def load_resolved_manager_config(
         resolved_workspace_root
     ):
         raise RuntimeError(
-            f"Absolute --config path {absolute_override} is outside workspace root {resolved_workspace_root}."
+            f"Absolute --config path {absolute_override} is outside workspace root "
+            f"{resolved_workspace_root}."
         )
 
     config_path = resolve_config_path(

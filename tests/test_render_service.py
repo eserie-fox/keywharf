@@ -13,9 +13,9 @@ from tests.support import (
     make_workspace,
     selection_payload,
     state_payload,
+    write_host_repo_config,
     write_identity_file,
     write_manager_config,
-    write_host_repo_config,
     write_state_file,
 )
 
@@ -26,12 +26,19 @@ def test_render_produces_preview_without_writing_files(tmp_path: Path) -> None:
     config = load_config(config_path, workspace_root=workspace_root)
     host_repo_path = config.host_repo_path
     write_identity_file(host_repo_path)
-    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
+    write_host_repo_config(
+        host_repo_path,
+        payload=host_repo_payload(endpoint_name="public", auth_name="home"),
+    )
     write_state_file(
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="public",
+                    authentication_name="home",
+                )
             ]
         ),
     )
@@ -44,7 +51,9 @@ def test_render_produces_preview_without_writing_files(tmp_path: Path) -> None:
     assert list(config.managed_keys_dir.rglob("*")) == []
 
 
-def test_render_stable_selectors_do_not_drift_when_host_repo_order_changes(tmp_path: Path) -> None:
+def test_render_stable_selectors_do_not_drift_when_host_repo_order_changes(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)
@@ -55,7 +64,11 @@ def test_render_stable_selectors_do_not_drift_when_host_repo_order_changes(tmp_p
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="work")
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="public",
+                    authentication_name="work",
+                )
             ]
         ),
     )
@@ -65,8 +78,16 @@ def test_render_stable_selectors_do_not_drift_when_host_repo_order_changes(tmp_p
             {"EndPointName": "private", "HostName": "private.example.com", "Port": 22},
         ],
         authentications=[
-            {"AuthenticationName": "home", "User": "fox", "IdentityFile": "keys/id_home"},
-            {"AuthenticationName": "work", "User": "fox", "IdentityFile": "keys/id_work"},
+            {
+                "AuthenticationName": "home",
+                "User": "fox",
+                "IdentityFile": "keys/id_home",
+            },
+            {
+                "AuthenticationName": "work",
+                "User": "fox",
+                "IdentityFile": "keys/id_work",
+            },
         ],
     )
     write_host_repo_config(host_repo_path, payload=first_payload)
@@ -100,7 +121,11 @@ def test_render_ignores_unselected_incomplete_hosts(tmp_path: Path) -> None:
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="public",
+                    authentication_name="home",
+                )
             ]
         ),
     )

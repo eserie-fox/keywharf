@@ -28,4 +28,3 @@ def write_managed_hosts(
     backup: bool = True,
 ) -> None:
     apply_managed_config(config, render_managed_hosts(hosts), backup=backup)
-

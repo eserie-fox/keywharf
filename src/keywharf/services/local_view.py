@@ -16,11 +16,7 @@ from keywharf.storage.state_store import load_state
 def list_local_statuses(config: ResolvedManagerConfig) -> list[LocalHostStatus]:
     state = load_state(config)
     current_hosts = load_managed_hosts(config)
-    current_by_name = {
-        host.name: host
-        for host in current_hosts
-        if host.name is not None
-    }
+    current_by_name = {host.name: host for host in current_hosts if host.name is not None}
 
     host_definitions = None
     host_repo_error = None

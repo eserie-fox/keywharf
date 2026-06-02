@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
-
 
 WORKSPACE_ENV = "KEYWHARF_WORKSPACE"
 WORKSPACE_MARKER = "KEYWHARF_WORKSPACE"
@@ -41,7 +40,8 @@ def _format_attempts(attempts: list[Path]) -> str:
         "Unable to locate keywharf workspace.\n"
         f"Searched for {WORKSPACE_MARKER} in these directories:\n"
         f"{lines}\n"
-        f"Pass --workspace, set {WORKSPACE_ENV}, or create a workspace with 'keywharf init <workspace_name>'."
+        f"Pass --workspace, set {WORKSPACE_ENV}, or create a workspace with "
+        "'keywharf init <workspace_name>'."
     )
 
 

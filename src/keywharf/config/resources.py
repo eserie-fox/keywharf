@@ -9,7 +9,6 @@ from typing import Any
 
 from jinja2 import Environment, PackageLoader, select_autoescape
 
-
 _PKG_SCHEME = "pkg://"
 _TEMPLATE_ENVIRONMENT = Environment(
     loader=PackageLoader("keywharf", "templates"),

@@ -3,19 +3,16 @@
 from __future__ import annotations
 
 import os
+import shlex
+import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-import shlex
-import sys
-from typing import Any, Mapping
-
-import click
-from click.core import ParameterSource
-
+from typing import Any
 
 _AUTO_EXCLUDED_PARAMETER_NAMES = {"install_completion", "show_completion"}
-_DEFAULT_PARAMETER_SOURCES = {None, ParameterSource.DEFAULT, ParameterSource.DEFAULT_MAP}
+_DEFAULT_PARAMETER_SOURCE_NAMES = {None, "DEFAULT", "DEFAULT_MAP"}
 
 
 @dataclass(slots=True)
@@ -27,7 +24,7 @@ class CommandInvocation:
     def display(self) -> str:
         return shlex.join(["keywharf", *self.argv])
 
-    def with_sudo_flag(self) -> "CommandInvocation":
+    def with_sudo_flag(self) -> CommandInvocation:
         if "--sudo" in self.argv:
             return CommandInvocation([*self.argv])
         return CommandInvocation([*self.argv, "--sudo"])
@@ -41,12 +38,12 @@ class CommandInvocation:
 
 
 def build_command_invocation(
-    ctx: click.Context,
+    ctx: Any,
     *,
     overrides: Mapping[str, Any] | None = None,
     exclude: tuple[str, ...] = ("sudo",),
 ) -> CommandInvocation:
-    """Build one canonical argv for the current Click/Typer command context."""
+    """Build one canonical argv for the current Typer command context."""
 
     override_map = dict(overrides or {})
     excluded_names = set(exclude) | _AUTO_EXCLUDED_PARAMETER_NAMES
@@ -73,9 +70,9 @@ def build_command_invocation(
     return CommandInvocation(argv)
 
 
-def _context_chain(ctx: click.Context) -> list[click.Context]:
-    chain: list[click.Context] = []
-    current: click.Context | None = ctx
+def _context_chain(ctx: Any) -> list[Any]:
+    chain: list[Any] = []
+    current: Any | None = ctx
     while current is not None:
         chain.append(current)
         current = current.parent
@@ -84,51 +81,83 @@ def _context_chain(ctx: click.Context) -> list[click.Context]:
 
 
 def _serialize_context_params(
-    ctx: click.Context,
+    ctx: Any,
     *,
     excluded_names: set[str],
     overrides: Mapping[str, Any],
 ) -> list[str]:
     argv: list[str] = []
     for parameter in ctx.command.params:
-        if not parameter.expose_value:
+        if not getattr(parameter, "expose_value", True):
             continue
         name = parameter.name
         if name is None or name in excluded_names:
             continue
         value = overrides[name] if name in overrides else ctx.params.get(name)
-        if isinstance(parameter, click.Argument):
+        if _is_argument_parameter(parameter):
             argv.extend(_serialize_argument(value))
             continue
-        if name not in overrides and ctx.get_parameter_source(name) in _DEFAULT_PARAMETER_SOURCES:
+        if name not in overrides and _is_default_parameter_source(ctx, name):
             continue
         argv.extend(_serialize_option(parameter, value))
     return argv
+
+
+def _is_argument_parameter(parameter: Any) -> bool:
+    return not _option_tokens(parameter) and not hasattr(parameter, "is_bool_flag")
+
+
+def _is_default_parameter_source(ctx: Any, name: str) -> bool:
+    source = ctx.get_parameter_source(name)
+    source_name = getattr(source, "name", source)
+    return source_name in _DEFAULT_PARAMETER_SOURCE_NAMES
 
 
 def _serialize_argument(value: Any) -> list[str]:
     return [_serialize_scalar(item) for item in _iter_values(value)]
 
 
-def _serialize_option(parameter: click.Option, value: Any) -> list[str]:
+def _serialize_option(parameter: Any, value: Any) -> list[str]:
     if value is None:
         return []
 
-    if parameter.is_bool_flag:
+    primary_option = _primary_option_token(parameter)
+
+    if getattr(parameter, "is_bool_flag", False):
         if value:
-            return [parameter.opts[0]]
-        if parameter.secondary_opts:
-            return [parameter.secondary_opts[0]]
+            return [primary_option]
+        secondary_options = _option_tokens_from(getattr(parameter, "secondary_opts", ()))
+        if secondary_options:
+            return [secondary_options[0]]
         return []
 
-    if parameter.multiple:
+    if getattr(parameter, "multiple", False):
         argv: list[str] = []
         for item in _iter_values(value):
-            argv.append(parameter.opts[0])
+            argv.append(primary_option)
             argv.extend(_serialize_composite_value(item))
         return argv
 
-    return [parameter.opts[0], *_serialize_composite_value(value)]
+    return [primary_option, *_serialize_composite_value(value)]
+
+
+def _primary_option_token(parameter: Any) -> str:
+    option_tokens = _option_tokens(parameter)
+    if not option_tokens:
+        raise TypeError(f"Expected an option parameter, got {parameter!r}")
+    return option_tokens[0]
+
+
+def _option_tokens(parameter: Any) -> list[str]:
+    return _option_tokens_from(getattr(parameter, "opts", ()))
+
+
+def _option_tokens_from(values: Any) -> list[str]:
+    if values is None:
+        return []
+    if isinstance(values, str):
+        values = [values]
+    return [value for value in values if isinstance(value, str) and value.startswith("-")]
 
 
 def _serialize_composite_value(value: Any) -> list[str]:
@@ -151,4 +180,3 @@ def _serialize_scalar(value: Any) -> str:
     if isinstance(value, Enum):
         return str(value.value)
     return str(value)
-

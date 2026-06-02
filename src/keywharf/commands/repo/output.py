@@ -128,7 +128,9 @@ def emit_host_repo_mutation(
         if subject == "host":
             typer.echo(f"{verb} host '{name}' in {result.config_path}.")
         else:
-            typer.echo(f"{verb} {subject} '{name}' for host '{server_name}' in {result.config_path}.")
+            typer.echo(
+                f"{verb} {subject} '{name}' for host '{server_name}' in {result.config_path}."
+            )
     else:
         if subject == "host":
             typer.echo(f"No host changes were needed for '{name}'.")

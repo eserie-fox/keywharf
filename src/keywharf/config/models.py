@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from keywharf.config.merge import config_deep_merge
 from keywharf.config.resources import read_json_mapping
-
 
 _MANAGER_DEFAULTS_RESOURCE_SPEC = "pkg://keywharf/config_defaults/manager.json"
 
@@ -49,16 +49,16 @@ class ManagerConfig(BaseModel):
         return text
 
     @classmethod
-    def from_defaults(cls) -> "ManagerConfig":
+    def from_defaults(cls) -> ManagerConfig:
         return cls.model_validate(read_json_mapping(_MANAGER_DEFAULTS_RESOURCE_SPEC))
 
     @classmethod
-    def from_file(cls, path: str | Path) -> "ManagerConfig":
+    def from_file(cls, path: str | Path) -> ManagerConfig:
         override = read_json_mapping(Path(path).expanduser())
         defaults = read_json_mapping(_MANAGER_DEFAULTS_RESOURCE_SPEC)
         return cls.model_validate(config_deep_merge(defaults, override))
 
     @classmethod
-    def from_mapping(cls, data: Mapping[str, Any]) -> "ManagerConfig":
+    def from_mapping(cls, data: Mapping[str, Any]) -> ManagerConfig:
         defaults = read_json_mapping(_MANAGER_DEFAULTS_RESOURCE_SPEC)
         return cls.model_validate(config_deep_merge(defaults, dict(data)))

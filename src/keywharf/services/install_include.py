@@ -28,11 +28,13 @@ def analyze_install_include_root_requirements(
 
     reasons: list[str] = []
     if config.main_config_path.exists() and not can_read_path(config.main_config_path):
+        hint = root_owned_hint(config.main_config_path)
         reasons.append(
-            f"main SSH config is not readable by current user: {config.main_config_path}{root_owned_hint(config.main_config_path)}"
+            f"main SSH config is not readable by current user: {config.main_config_path}{hint}"
         )
     if not can_write_file(config.main_config_path):
+        hint = root_owned_hint(config.main_config_path.parent)
         reasons.append(
-            f"main SSH config path is not writable by current user: {config.main_config_path}{root_owned_hint(config.main_config_path.parent)}"
+            f"main SSH config path is not writable by current user: {config.main_config_path}{hint}"
         )
     return reasons

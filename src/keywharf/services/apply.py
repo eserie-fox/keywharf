@@ -93,32 +93,41 @@ def analyze_apply_root_requirements(
             )
 
     if not can_write_file(config.managed_config_path):
+        hint = root_owned_hint(config.managed_config_path.parent)
         reasons.append(
-            f"managed config path is not writable by current user: {config.managed_config_path}{root_owned_hint(config.managed_config_path.parent)}"
+            "managed config path is not writable by current user: "
+            f"{config.managed_config_path}{hint}"
         )
     if not can_write_directory(config.managed_keys_dir):
+        hint = root_owned_hint(config.managed_keys_dir)
         reasons.append(
-            f"managed keys directory is not writable by current user: {config.managed_keys_dir}{root_owned_hint(config.managed_keys_dir)}"
+            "managed keys directory is not writable by current user: "
+            f"{config.managed_keys_dir}{hint}"
         )
-    if backup and config.managed_config_path.exists() and not can_write_directory(config.managed_config_path.parent):
+    if (
+        backup
+        and config.managed_config_path.exists()
+        and not can_write_directory(config.managed_config_path.parent)
+    ):
+        hint = root_owned_hint(config.managed_config_path.parent)
         reasons.append(
-            f"managed config backup directory is not writable by current user: {config.managed_config_path.parent}{root_owned_hint(config.managed_config_path.parent)}"
+            "managed config backup directory is not writable by current user: "
+            f"{config.managed_config_path.parent}{hint}"
         )
 
     for plan in render_result.planned_key_copies:
         if not can_read_path(plan.source):
-            reasons.append(
-                f"identity source is not readable by current user: {plan.source}{root_owned_hint(plan.source)}"
-            )
+            hint = root_owned_hint(plan.source)
+            reasons.append(f"identity source is not readable by current user: {plan.source}{hint}")
         if not can_write_file(plan.target):
+            hint = root_owned_hint(plan.target.parent)
             reasons.append(
-                f"managed key target path is not writable by current user: {plan.target}{root_owned_hint(plan.target.parent)}"
+                f"managed key target path is not writable by current user: {plan.target}{hint}"
             )
 
     for target in render_result.planned_key_deletes:
         if not can_delete_path(target):
-            reasons.append(
-                f"managed key path is not removable by current user: {target}{root_owned_hint(target)}"
-            )
+            hint = root_owned_hint(target)
+            reasons.append(f"managed key path is not removable by current user: {target}{hint}")
 
     return reasons

@@ -8,18 +8,17 @@ from typer.testing import CliRunner
 from keywharf.cli import app
 from keywharf.services.render import render_selected_state
 from tests.support import (
-    load_config,
     host_repo_payload,
+    load_config,
     make_workspace,
     selection_payload,
     state_payload,
+    write_host_repo_config,
     write_identity_file,
     write_managed_ssh_config,
     write_manager_config,
-    write_host_repo_config,
     write_state_file,
 )
-
 
 RUNNER = CliRunner()
 
@@ -35,14 +34,23 @@ def test_local_list_reports_applied_pending_and_orphaned(tmp_path: Path) -> None
         host_repo_path,
         payload=[
             host_repo_payload(server_name="demo", endpoint_name="public", auth_name="home")[0],
-            host_repo_payload(server_name="other", endpoint_name="public", auth_name="home", identity_file="keys/id_other")[0],
+            host_repo_payload(
+                server_name="other",
+                endpoint_name="public",
+                auth_name="home",
+                identity_file="keys/id_other",
+            )[0],
         ],
     )
     write_state_file(
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="public",
+                    authentication_name="home",
+                )
             ]
         ),
     )
@@ -51,8 +59,16 @@ def test_local_list_reports_applied_pending_and_orphaned(tmp_path: Path) -> None
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home"),
-                selection_payload(server_name="other", endpoint_name="public", authentication_name="home"),
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="public",
+                    authentication_name="home",
+                ),
+                selection_payload(
+                    server_name="other",
+                    endpoint_name="public",
+                    authentication_name="home",
+                ),
             ]
         ),
     )
@@ -78,12 +94,19 @@ def test_local_show_includes_desired_and_current_blocks(tmp_path: Path) -> None:
     config = load_config(config_path, workspace_root=workspace_root)
     host_repo_path = config.host_repo_path
     write_identity_file(host_repo_path)
-    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
+    write_host_repo_config(
+        host_repo_path,
+        payload=host_repo_payload(endpoint_name="public", auth_name="home"),
+    )
     write_state_file(
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="public",
+                    authentication_name="home",
+                )
             ]
         ),
     )

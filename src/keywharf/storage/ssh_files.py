@@ -8,7 +8,6 @@ import stat
 from datetime import datetime
 from pathlib import Path
 
-
 MANAGED_SSH_HEADER = "# This file is managed by keywharf"
 
 

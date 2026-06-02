@@ -7,11 +7,10 @@ import os
 import shlex
 from pathlib import Path
 
-from keywharf.config.resources import render_template
 from keywharf.config.resolver import ResolvedManagerConfig
+from keywharf.config.resources import render_template
 from keywharf.domain.results import IncludeInstallResult
 from keywharf.storage.ssh_files import read_ssh_config, write_ssh_config
-
 
 KEYWHARF_INCLUDE_COMMENT = "# Added by keywharf"
 INCLUDE_BLOCK_TEMPLATE = "include_block.j2"

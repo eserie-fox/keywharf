@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from pydantic import ValidationError
 import typer
+from pydantic import ValidationError
 
 from keywharf.config.loader import load_resolved_manager_config
 from keywharf.config.resolver import ResolvedManagerConfig
@@ -56,7 +56,9 @@ def get_manager_config(ctx: typer.Context) -> ResolvedManagerConfig:
     except FileNotFoundError as exc:
         missing_path = exc.filename or str(exc)
         raise KeywharfError(
-            f"Config file not found at {missing_path}. The workspace marker was found, but config.json is missing. Provide --config or create a new workspace with 'keywharf init <workspace_name>'.",
+            f"Config file not found at {missing_path}. The workspace marker was found, "
+            "but config.json is missing. Provide --config or create a new workspace with "
+            "'keywharf init <workspace_name>'.",
             exit_code=2,
         ) from exc
     except ValidationError as exc:

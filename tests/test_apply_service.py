@@ -13,28 +13,37 @@ from tests.support import (
     make_workspace,
     selection_payload,
     state_payload,
+    write_host_repo_config,
     write_identity_file,
     write_local_ssh_config,
     write_managed_ssh_config,
     write_manager_config,
-    write_host_repo_config,
     write_state_file,
 )
 
 
-def test_apply_writes_only_manager_owned_files_and_cleans_stale_keys(tmp_path: Path) -> None:
+def test_apply_writes_only_manager_owned_files_and_cleans_stale_keys(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)
     write_local_ssh_config(config.ssh_dir, "Host untouched\n  HostName untouched.example.com\n")
     host_repo_path = config.host_repo_path
     write_identity_file(host_repo_path)
-    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
+    write_host_repo_config(
+        host_repo_path,
+        payload=host_repo_payload(endpoint_name="public", auth_name="home"),
+    )
     write_state_file(
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="public",
+                    authentication_name="home",
+                )
             ]
         ),
     )
@@ -53,18 +62,27 @@ def test_apply_writes_only_manager_owned_files_and_cleans_stale_keys(tmp_path: P
     assert not stale_key.exists()
 
 
-def test_apply_preserves_existing_managed_config_when_key_copy_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_apply_preserves_existing_managed_config_when_key_copy_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)
     host_repo_path = config.host_repo_path
     write_identity_file(host_repo_path)
-    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
+    write_host_repo_config(
+        host_repo_path,
+        payload=host_repo_payload(endpoint_name="public", auth_name="home"),
+    )
     write_state_file(
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="public",
+                    authentication_name="home",
+                )
             ]
         ),
     )
@@ -138,7 +156,11 @@ def test_apply_ignores_unselected_incomplete_hosts(tmp_path: Path) -> None:
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="public",
+                    authentication_name="home",
+                )
             ]
         ),
     )

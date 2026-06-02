@@ -4,6 +4,7 @@
 
 - Python 3.11+
 - system `git`
+- `uv` for Makefile commands and CI-parity local checks
 
 Typical setup:
 
@@ -48,6 +49,16 @@ Run the full suite:
 ```bash
 pytest
 ```
+
+Run the project quality gate:
+
+```bash
+make check
+```
+
+The quality gate runs Ruff formatting checks, Ruff lint checks, and pytest. Ruff is configured
+in `pyproject.toml` for Python 3.11, 100-column lines, import sorting, Python upgrade checks,
+Bugbear checks, and Ruff-specific checks.
 
 Current coverage includes:
 

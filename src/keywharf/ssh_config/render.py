@@ -7,7 +7,7 @@ from keywharf.storage.ssh_files import MANAGED_SSH_HEADER
 
 
 def _indented(indent: int, text: str) -> str:
-    return f"{'\t' * indent}{text}"
+    return ("\t" * indent) + text
 
 
 def _render_comment(comment: str | None, indent: int) -> list[str]:
@@ -32,9 +32,7 @@ def render_host_config(host: SSHHostConfig, indent: int = 0) -> str:
     if host.authentication.user:
         lines.append(_indented(indent + 1, f"User {host.authentication.user}"))
     if host.authentication.identity_file:
-        lines.append(
-            _indented(indent + 1, f"IdentityFile {host.authentication.identity_file}")
-        )
+        lines.append(_indented(indent + 1, f"IdentityFile {host.authentication.identity_file}"))
     for extra in host.extra_config:
         lines.extend(_render_comment(extra.comment, indent + 1))
         if extra.key is None or extra.value is None:

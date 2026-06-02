@@ -12,25 +12,34 @@ from tests.support import (
     make_workspace,
     selection_payload,
     state_payload,
+    write_host_repo_config,
     write_identity_file,
     write_manager_config,
-    write_host_repo_config,
     write_state_file,
 )
 
 
-def test_validate_warns_when_include_is_missing_but_workspace_is_otherwise_valid(tmp_path: Path) -> None:
+def test_validate_warns_when_include_is_missing_but_workspace_is_otherwise_valid(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)
     host_repo_path = config.host_repo_path
     write_identity_file(host_repo_path)
-    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
+    write_host_repo_config(
+        host_repo_path,
+        payload=host_repo_payload(endpoint_name="public", auth_name="home"),
+    )
     write_state_file(
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="public", authentication_name="home")
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="public",
+                    authentication_name="home",
+                )
             ]
         ),
     )
@@ -84,7 +93,9 @@ def test_validate_reports_host_without_authentication_options(tmp_path: Path) ->
     assert result.errors[-1].startswith("Add missing options with ")
 
 
-def test_validate_reports_host_without_endpoint_or_authentication_options(tmp_path: Path) -> None:
+def test_validate_reports_host_without_endpoint_or_authentication_options(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)
@@ -97,7 +108,9 @@ def test_validate_reports_host_without_endpoint_or_authentication_options(tmp_pa
     assert result.errors[-1].startswith("Add missing options with ")
 
 
-def test_validate_reports_all_incomplete_hosts_once_with_one_guidance_line(tmp_path: Path) -> None:
+def test_validate_reports_all_incomplete_hosts_once_with_one_guidance_line(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)
@@ -172,8 +185,16 @@ def test_validate_rejects_duplicate_server_and_selector_names(tmp_path: Path) ->
                     {"EndPointName": "public", "HostName": "c.example.com", "Port": 23},
                 ],
                 authentications=[
-                    {"AuthenticationName": "home", "User": "fox", "IdentityFile": "keys/id_demo"},
-                    {"AuthenticationName": "home", "User": "fox", "IdentityFile": "keys/id_demo_2"},
+                    {
+                        "AuthenticationName": "home",
+                        "User": "fox",
+                        "IdentityFile": "keys/id_demo",
+                    },
+                    {
+                        "AuthenticationName": "home",
+                        "User": "fox",
+                        "IdentityFile": "keys/id_demo_2",
+                    },
                 ],
             )[0],
         ],
@@ -193,12 +214,19 @@ def test_validate_rejects_state_reference_to_missing_selector(tmp_path: Path) ->
     config = load_config(config_path, workspace_root=workspace_root)
     host_repo_path = config.host_repo_path
     write_identity_file(host_repo_path)
-    write_host_repo_config(host_repo_path, payload=host_repo_payload(endpoint_name="public", auth_name="home"))
+    write_host_repo_config(
+        host_repo_path,
+        payload=host_repo_payload(endpoint_name="public", auth_name="home"),
+    )
     write_state_file(
         config.state_path,
         payload=state_payload(
             selected_hosts=[
-                selection_payload(server_name="demo", endpoint_name="missing", authentication_name="home")
+                selection_payload(
+                    server_name="demo",
+                    endpoint_name="missing",
+                    authentication_name="home",
+                )
             ]
         ),
     )
@@ -209,7 +237,9 @@ def test_validate_rejects_state_reference_to_missing_selector(tmp_path: Path) ->
     assert any("no endpoint named 'missing'" in error for error in result.errors)
 
 
-def test_validate_rejects_null_selector_after_host_repo_gains_multiple_options(tmp_path: Path) -> None:
+def test_validate_rejects_null_selector_after_host_repo_gains_multiple_options(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)
@@ -224,15 +254,25 @@ def test_validate_rejects_null_selector_after_host_repo_gains_multiple_options(t
                 {"EndPointName": "private", "HostName": "b.example.com", "Port": 22},
             ],
             authentications=[
-                {"AuthenticationName": "home", "User": "fox", "IdentityFile": "keys/id_demo"},
-                {"AuthenticationName": "work", "User": "fox", "IdentityFile": "keys/id_demo_2"},
+                {
+                    "AuthenticationName": "home",
+                    "User": "fox",
+                    "IdentityFile": "keys/id_demo",
+                },
+                {
+                    "AuthenticationName": "work",
+                    "User": "fox",
+                    "IdentityFile": "keys/id_demo_2",
+                },
             ],
         ),
     )
     write_state_file(
         config.state_path,
         payload=state_payload(
-            selected_hosts=[selection_payload(server_name="demo", endpoint_name=None, authentication_name=None)]
+            selected_hosts=[
+                selection_payload(server_name="demo", endpoint_name=None, authentication_name=None)
+            ]
         ),
     )
 
@@ -243,7 +283,9 @@ def test_validate_rejects_null_selector_after_host_repo_gains_multiple_options(t
     assert any("multiple authentication options" in error for error in result.errors)
 
 
-def test_validate_skips_duplicate_selection_errors_for_incomplete_selected_host(tmp_path: Path) -> None:
+def test_validate_skips_duplicate_selection_errors_for_incomplete_selected_host(
+    tmp_path: Path,
+) -> None:
     workspace_root = make_workspace(tmp_path)
     config_path = write_manager_config(workspace_root / "config.json")
     config = load_config(config_path, workspace_root=workspace_root)

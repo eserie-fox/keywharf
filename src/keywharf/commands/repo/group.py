@@ -8,7 +8,6 @@ from keywharf.commands.repo.host import register as register_host_commands
 from keywharf.commands.repo.init import register as register_repo_init_command
 from keywharf.commands.repo.sync import register as register_repo_sync_command
 
-
 app = typer.Typer(
     name="repo",
     no_args_is_help=True,

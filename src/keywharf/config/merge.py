@@ -23,4 +23,3 @@ def config_deep_merge(
             merged[key] = deepcopy(value)
 
     return merged
-
