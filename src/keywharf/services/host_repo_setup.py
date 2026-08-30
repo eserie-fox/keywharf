@@ -39,7 +39,7 @@ def ensure_host_repo_path_is_ready_for_sync(config: ResolvedManagerConfig) -> No
         return
     if not host_repo_path.is_dir():
         raise KeywharfError(f"Host repo path exists but is not a directory: {host_repo_path}")
-    if (host_repo_path / ".git").is_dir():
+    if (host_repo_path / ".git").exists():
         return
     if host_repo_config_path(config).is_file():
         raise KeywharfError(

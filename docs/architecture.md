@@ -7,7 +7,8 @@
 - `commands`: Typer adapters only. They parse CLI options, format terminal/JSON output, run sudo re-exec, and map failures to exit codes.
 - `config`: formal manager-config schema, defaults loading, deep merge, and runtime resolution.
 - `services`: workflow orchestration for `init`, `repo init`, `repo sync`, `select`, `validate`, `render`, `apply`, include installation, local views, and host/endpoint/auth editing.
-- `storage`: JSON/file I/O, git sync, state persistence, managed-file writes, and host repo config writes.
+- `storage`: JSON/file I/O, GitPython-backed system-Git sync, state persistence, managed-file writes, and host repo
+  config writes.
 - `ssh_config`: low-level parse/build/render logic for managed SSH host blocks.
 - `runtime`: workspace discovery and `%{WORKSPACE}` token handling.
 - `domain`: host repo models, local state models, SSH host value objects, result types, and project-specific errors.
@@ -80,3 +81,11 @@ Mutating commands share one privilege path:
 4. abort early with retry guidance when privileges are insufficient
 
 This logic is centralized in `commands/_invocation.py`, `commands/_privilege.py`, and service-level analyzers.
+
+## Git boundary
+
+`repo sync` uses GitPython's repository and remote object APIs while retaining the system Git executable. Repository
+objects are closed explicitly at the storage boundary. Clone options are fixed and safe, existing repositories must be
+the exact configured worktree root, and `origin` must exactly match `host_repo_remote_url`. Pull remains
+fast-forward-only. Keywharf relies on the user's Git credential helpers and SSH configuration and never commits, pushes,
+stashes, resets, cleans, or changes remotes.

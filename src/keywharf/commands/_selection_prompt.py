@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from typing import Literal, TypeVar
 
 import typer
 
@@ -12,6 +13,8 @@ from keywharf.domain.models import (
     HostDefinition,
     HostEndpointOption,
 )
+
+OptionT = TypeVar("OptionT", HostEndpointOption, HostAuthenticationOption)
 
 
 def complete_selection_names(
@@ -45,13 +48,13 @@ def complete_selection_names(
 
 
 def _complete_option_name(
-    options: Sequence[HostEndpointOption] | Sequence[HostAuthenticationOption],
+    options: Sequence[OptionT],
     *,
     requested_name: str | None,
     server_name: str,
     label: str,
     flag_name: str,
-    formatter: Callable[[HostEndpointOption | HostAuthenticationOption], str],
+    formatter: Callable[[OptionT], str],
 ) -> str | None:
     if requested_name is not None or not options:
         return requested_name
@@ -95,7 +98,7 @@ def _supports_interactive_selection() -> bool:
     return _stream_is_tty("stdin") and _stream_is_tty("stdout")
 
 
-def _stream_is_tty(name: str) -> bool:
+def _stream_is_tty(name: Literal["stdin", "stdout", "stderr"]) -> bool:
     stream = typer.get_text_stream(name)
     isatty = getattr(stream, "isatty", None)
     if isatty is None:

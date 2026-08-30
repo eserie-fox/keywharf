@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from copy import deepcopy
+from typing import TypeVar
 
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.domain.errors import KeywharfError
@@ -20,6 +21,8 @@ from keywharf.services.host_repo_setup import missing_host_repo_config_message
 from keywharf.services.privilege import can_read_path, can_write_file, root_owned_hint
 from keywharf.storage.host_repo import host_repo_config_path, write_host_repo_entries
 from keywharf.storage.state_store import load_state
+
+OptionT = TypeVar("OptionT", HostEndpointOption, HostAuthenticationOption)
 
 
 def analyze_host_repo_config_write_root_requirements(
@@ -242,12 +245,12 @@ def build_selection_warnings(
 
 
 def _find_named_option_index(
-    options: Sequence[HostEndpointOption] | Sequence[HostAuthenticationOption],
+    options: Sequence[OptionT],
     *,
     option_name: str,
     server_name: str,
     label: str,
-) -> tuple[int, HostEndpointOption | HostAuthenticationOption]:
+) -> tuple[int, OptionT]:
     if not options:
         raise KeywharfError(f"Host '{server_name}' has no {label} options.")
     for index, option in enumerate(options):
@@ -257,7 +260,7 @@ def _find_named_option_index(
 
 
 def _ensure_unique_named_option(
-    options: Sequence[HostEndpointOption] | Sequence[HostAuthenticationOption],
+    options: Sequence[OptionT],
     *,
     option_name: str,
     server_name: str,

@@ -67,6 +67,9 @@ Defaults resource:
 
 By default, `%{WORKSPACE}/repo` is the one host repo directory under the workspace.
 
+When `host_repo_remote_url` is configured, `repo sync` requires exact equality with the checkout's `origin` URL. It uses
+GitPython over system Git and keeps system HTTPS credentials, SSH agents, SSH configuration, and known-hosts behavior.
+
 Resolver-derived defaults:
 
 - `managed_config_path -> <ssh_dir>/managed/keywharf.conf`

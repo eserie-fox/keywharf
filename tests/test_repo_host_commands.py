@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 import shutil
-import subprocess
 from pathlib import Path
 
+from git import Actor, Repo
 from typer.testing import CliRunner
 
 from keywharf.cli import app
@@ -24,16 +24,7 @@ from tests.support import (
 )
 
 RUNNER = CliRunner()
-
-
-def _run_git(args: list[str], *, cwd: Path | None = None) -> None:
-    subprocess.run(
-        ["git", *args],
-        cwd=cwd,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+GIT_ACTOR = Actor("Keywharf Tests", "tests@example.com")
 
 
 def _create_bare_host_repo_remote(base_dir: Path) -> Path:
@@ -42,16 +33,18 @@ def _create_bare_host_repo_remote(base_dir: Path) -> Path:
 
     source_repo = base_dir / "source"
     source_repo.mkdir(parents=True)
-    _run_git(["init"], cwd=source_repo)
-    _run_git(["config", "user.email", "tests@example.com"], cwd=source_repo)
-    _run_git(["config", "user.name", "tests"], cwd=source_repo)
     (source_repo / "config.json").write_text("[]\n", encoding="utf-8")
     (source_repo / ".gitignore").write_text("*.bak\n", encoding="utf-8")
-    _run_git(["add", "config.json", ".gitignore"], cwd=source_repo)
-    _run_git(["commit", "-m", "init"], cwd=source_repo)
+    with Repo.init(source_repo, initial_branch="main") as repo:
+        repo.index.add(["config.json", ".gitignore"])
+        repo.index.commit("init", author=GIT_ACTOR, committer=GIT_ACTOR)
 
     remote_repo = base_dir / "remote.git"
-    _run_git(["clone", "--bare", str(source_repo), str(remote_repo)])
+    with Repo.init(remote_repo, bare=True, initial_branch="main"):
+        pass
+    with Repo(source_repo, search_parent_directories=False) as repo:
+        origin = repo.create_remote("origin", str(remote_repo))
+        origin.push("main:main")
     return remote_repo
 
 

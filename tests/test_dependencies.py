@@ -6,6 +6,8 @@ import sys
 import tomllib
 from pathlib import Path
 
+IMPORT_DISTRIBUTIONS = {"git": "GitPython"}
+
 
 def test_runtime_third_party_imports_are_declared_dependencies() -> None:
     declared_dependencies = {
@@ -15,13 +17,14 @@ def test_runtime_third_party_imports_are_declared_dependencies() -> None:
     missing_dependencies = sorted(
         import_name
         for import_name in _runtime_third_party_imports()
-        if _normalize_distribution_name(import_name) not in declared_dependencies
+        if _normalize_distribution_name(IMPORT_DISTRIBUTIONS.get(import_name, import_name))
+        not in declared_dependencies
     )
 
     assert missing_dependencies == []
 
 
-def test_runtime_dependencies_use_minimum_only_policy() -> None:
+def test_runtime_dependency_constraints_match_project_policy() -> None:
     runtime_dependencies = _runtime_dependencies()
     dependency_by_name = {
         _normalize_distribution_name(_dependency_name(dependency)): dependency
@@ -34,7 +37,8 @@ def test_runtime_dependencies_use_minimum_only_policy() -> None:
         if any(operator in dependency for operator in ("<", "~=", "!="))
     ]
 
-    assert capped_dependencies == []
+    assert capped_dependencies == ["GitPython>=3.1.59,<4"]
+    assert dependency_by_name["gitpython"] == "GitPython>=3.1.59,<4"
     assert dependency_by_name["typer"] == "typer>=0.26"
     assert dependency_by_name["rich"] == "rich>=13.8"
 
