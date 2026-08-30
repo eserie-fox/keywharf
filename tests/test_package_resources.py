@@ -54,3 +54,15 @@ def test_pyproject_package_data_includes_json_and_jinja_resources() -> None:
     assert "config_defaults/**/*.json" in package_data
     assert "templates/**/*.json" in package_data
     assert "templates/**/*.j2" in package_data
+
+
+def test_pyproject_uses_pep_639_license_metadata() -> None:
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    project = pyproject["project"]
+    setuptools_config = pyproject["tool"]["setuptools"]
+
+    assert "setuptools>=77.0.3" in pyproject["build-system"]["requires"]
+    assert project["license"] == "MIT"
+    assert project["license-files"] == ["LICENSE"]
+    assert not any(classifier.startswith("License ::") for classifier in project["classifiers"])
+    assert "license-files" not in setuptools_config
