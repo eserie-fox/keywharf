@@ -50,9 +50,11 @@ def test_select_with_sudo_reexecs_full_command(monkeypatch: pytest.MonkeyPatch) 
 
     assert isinstance(result.exception, ReexecCalled)
     assert captured["program"] == "sudo"
-    assert "--sudo" in captured["args"]
-    assert "select" in captured["args"]
-    assert "demo" in captured["args"]
+    args = captured["args"]
+    assert isinstance(args, list)
+    assert "--sudo" in args
+    assert "select" in args
+    assert "demo" in args
 
 
 def test_repo_sync_analyzer_reports_unwritable_host_repo_parent(

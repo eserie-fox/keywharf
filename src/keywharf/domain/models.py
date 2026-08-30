@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 
 def _clean_string(value: object | None) -> str | None:
@@ -17,7 +17,7 @@ def _clean_string(value: object | None) -> str | None:
 def _clean_int(value: object | None) -> int | None:
     if value is None or value == "":
         return None
-    return int(value)
+    return int(cast(Any, value))
 
 
 def _normalize_path_string(value: str | Path | None) -> str | None:

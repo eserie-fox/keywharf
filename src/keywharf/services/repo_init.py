@@ -29,7 +29,7 @@ def initialize_host_repo(config: ResolvedManagerConfig) -> HostRepoInitResult:
             raise KeywharfError(f"Host repo path exists but is not a directory: {host_repo_path}")
         if config_path.exists():
             raise KeywharfError(f"Host repo is already initialized at {config_path}.")
-        if not (host_repo_path / ".git").is_dir() and any(host_repo_path.iterdir()):
+        if not (host_repo_path / ".git").exists() and any(host_repo_path.iterdir()):
             raise KeywharfError(
                 f"Host repo path exists but is neither empty nor a git repository: {host_repo_path}"
             )

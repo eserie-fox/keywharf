@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from collections.abc import Sequence
+from typing import Protocol, TypeVar
 
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.domain.errors import KeywharfError
@@ -20,6 +21,9 @@ from keywharf.storage.host_repo import load_host_repo_entries
 
 class _NamedHostOption(Protocol):
     name: str | None
+
+
+OptionT = TypeVar("OptionT", HostEndpointOption, HostAuthenticationOption)
 
 
 def load_host_definition_list(config: ResolvedManagerConfig) -> list[HostDefinition]:
@@ -236,7 +240,7 @@ def build_host_config_from_selection(
 
 def _validate_named_options(
     server_name: str,
-    options: list[_NamedHostOption],
+    options: Sequence[_NamedHostOption],
     *,
     label: str,
     field_name: str,
@@ -261,13 +265,13 @@ def _validate_named_options(
 
 
 def _resolve_named_option(
-    options: list[HostEndpointOption] | list[HostAuthenticationOption],
+    options: Sequence[OptionT],
     *,
     requested_name: str | None,
     label: str,
     field_name: str,
     server_name: str,
-) -> tuple[int, HostEndpointOption | HostAuthenticationOption]:
+) -> tuple[int, OptionT]:
     if not options:
         raise KeywharfError(f"Config '{server_name}' has no {label} options.")
 
