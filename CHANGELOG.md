@@ -9,6 +9,8 @@
 - support linked worktrees while requiring the configured path to be the exact worktree root
 - sanitize Git command failures, redact embedded URL credentials, and close every opened or cloned repository explicitly
 - add the security-sensitive `GitPython>=3.1.59,<4` runtime constraint and local-only Git regression coverage
+- harden tag-authoritative publication by validating the deterministic build epoch and ignoring tag deletion or move events
+- migrate distribution license metadata to the standardized PEP 639 fields
 - bump runtime/package version metadata to `1.0.6` and add patch-release documentation
 
 ## 1.0.5 (2026-06-02)
