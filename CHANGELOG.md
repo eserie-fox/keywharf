@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.0.6 (2026-08-30)
+
+- replace hand-written Git subprocess orchestration with GitPython's repository and remote object APIs
+- retain system Git authentication, noninteractive SSH behavior, exact origin matching, and fast-forward-only pulls
+- support linked worktrees while requiring the configured path to be the exact worktree root
+- sanitize Git command failures, redact embedded URL credentials, and close every opened or cloned repository explicitly
+- add the security-sensitive `GitPython>=3.1.59,<4` runtime constraint and local-only Git regression coverage
+- bump runtime/package version metadata to `1.0.6` and add patch-release documentation
+
 ## 1.0.5 (2026-06-02)
 
 - removed runtime reliance on external `click` imports so Typer 0.26+ environments that use vendored Click no longer fail during CLI startup

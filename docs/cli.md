@@ -166,4 +166,7 @@ Behavior:
 - `render` and `apply` require only selected hosts to be complete
 - `repo init` never runs `git init`, creates `.git`, runs `git remote add`, `commit`, or `push`
 - if you want `<workspace>/repo` to become a real git repository, do that yourself after `repo init`
+- `repo sync` requires the configured URL to equal `origin`, uses a fast-forward-only pull, and never commits, pushes,
+  resets, stashes, cleans, or changes remotes
+- GitPython drives the required system Git executable, so system credential helpers and SSH settings still apply
 - normal commands do not rewrite the main SSH config

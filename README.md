@@ -27,6 +27,11 @@ keywharf --workspace ~/demo repo host list
 keywharf --workspace ~/demo repo host show demo
 ```
 
+`repo sync` uses GitPython as an object interface to the required system Git executable. The configured `origin` URL
+must exactly match `host_repo_remote_url`; synchronization clones or pulls fast-forward-only and never commits, pushes,
+stashes, resets, cleans, or rewrites history. System credential helpers, the SSH agent, SSH configuration, and
+`known_hosts` remain authoritative.
+
 High-frequency read-only convenience views are also available:
 
 ```bash
@@ -200,6 +205,7 @@ Runtime requirements:
 
 - Python 3.11+
 - system `git`
+- GitPython 3.1.59 or newer within the supported 3.x series (installed with Keywharf)
 
 ## Documentation
 
@@ -208,5 +214,5 @@ Runtime requirements:
 - [`docs/cli.md`](docs/cli.md)
 - [`docs/development.md`](docs/development.md)
 - [`docs/release.md`](docs/release.md)
-- [`docs/release-notes/1.0.5.md`](docs/release-notes/1.0.5.md)
+- [`docs/release-notes/1.0.6.md`](docs/release-notes/1.0.6.md)
 - [`CHANGELOG.md`](CHANGELOG.md)

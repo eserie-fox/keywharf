@@ -4,6 +4,7 @@
 
 - Python 3.11+
 - system `git`
+- GitPython 3.1.59+ within the supported 3.x series, installed as a runtime dependency
 - `uv` for Makefile commands and CI-parity local checks
 
 Typical setup:
@@ -74,6 +75,7 @@ Current coverage includes:
 - apply orchestration and safety guards
 - include detection/installation
 - privilege helper and sudo re-exec flow
+- local-only GitPython clone, fast-forward, linked-worktree, and error-boundary behavior
 - thin import surfaces
 
 ## Config Development Rules
@@ -111,6 +113,7 @@ Do not reintroduce:
 
 - all metadata and dependencies live in `pyproject.toml`
 - version comes from `keywharf.version.__version__`
+- runtime metadata keeps the security-sensitive `GitPython>=3.1.59,<4` constraint
 - package resources ship through setuptools package-data rules
 - root package `__init__.py` stays intentionally thin and does not re-export version or service symbols
 
