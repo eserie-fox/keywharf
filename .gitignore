@@ -170,4 +170,3 @@ config.json
 .agents
 .codex
 skills-lock.json
-uv.lock
