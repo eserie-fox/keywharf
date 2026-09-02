@@ -4,18 +4,13 @@
 - Latest prepared release note: [`1.0.6`](release-notes/1.0.6.md)
 - Release note archive: [`docs/release-notes/`](release-notes/)
 
-## Publication authority
+## Publishing
 
-Creation of a `v*` tag is the sole PyPI publication authority. Tag deletions and
-tag moves do not build or publish. For a newly created tag, the GitHub workflow
-checks tag/package-version equality, derives and validates `SOURCE_DATE_EPOCH`,
-builds and validates once, records hashes, and uploads one artifact bundle. The
-PyPI job downloads and hash-checks that bundle and publishes the exact files
-without rebuilding. Main pushes and `workflow_dispatch` never publish to PyPI
-or TestPyPI; manual dispatch is build-and-validate only.
+After the version and release notes are prepared, reviewed, and merged to `main`, publish a
+normal GitHub Release for the intended version tag. Publishing the release triggers the package
+workflow once.
 
-Before tagging, perform two isolated `python -m build` runs with the same epoch
-and run `python scripts/release/compare_artifacts.py <build-1-dist>
-<build-2-dist>`. Wheel bytes must be identical. Extracted sdist paths,
-contents, normalized modes, entry types, and symlink targets must be identical;
-raw sdist hashes may differ only because of archive/gzip container metadata.
+The workflow calls the shared public build workflow to create one sdist and wheel artifact. A
+project-local job then downloads that artifact and publishes it to PyPI through Trusted
+Publishing, GitHub OIDC, and the `pypi` environment. It does not rebuild, use an API token, or
+publish from tag pushes or manual dispatches.

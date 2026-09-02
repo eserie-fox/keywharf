@@ -6,58 +6,10 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
-  format-lint:
-    name: format-lint
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v8.1.0
-        with:
-          enable-cache: true
-          cache-dependency-glob: pyproject.toml
-          cache-suffix: format-lint
-
-      - name: Set up Python
-        run: uv python install 3.11
-
-      - name: Install dependencies
-        run: uv sync --extra dev
-
-      - name: Check formatting
-        run: uv run ruff format --check .
-
-      - name: Lint
-        run: uv run ruff check .
-
-  tests:
-    name: tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v8.1.0
-        with:
-          enable-cache: true
-          cache-dependency-glob: pyproject.toml
-          cache-suffix: tests
-
-      - name: Set up Python
-        run: uv python install 3.11
-
-      - name: Install dependencies
-        run: uv sync --extra dev
-
-      - name: Run tests
-        run: uv run pytest
+  ci:
+    name: ci
+    uses: eserie-fox/github-workflows/.github/workflows/python-ci.yml@main
