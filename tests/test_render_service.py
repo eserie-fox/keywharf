@@ -46,7 +46,7 @@ def test_render_produces_preview_without_writing_files(tmp_path: Path) -> None:
     result = render_selected_state(config)
 
     assert "Host demo" in result.content
-    assert str(config.managed_keys_dir / "demo" / "id_demo") in result.content
+    assert (config.managed_keys_dir / "demo" / "id_demo").as_posix() in result.content
     assert not config.managed_config_path.exists()
     assert list(config.managed_keys_dir.rglob("*")) == []
 

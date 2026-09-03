@@ -29,6 +29,9 @@ def test_system_git_preflight_and_noninteractive_environment(
     assert "BatchMode=yes" in environment["GIT_SSH_COMMAND"]
     assert "StrictHostKeyChecking=accept-new" in environment["GIT_SSH_COMMAND"]
 
+    assert git_repo_service._remote_urls_match("C:/repos/hosts.git", r"C:\repos\hosts.git")
+    assert not git_repo_service._remote_urls_match("C:/repos/hosts.git", r"C:\repos\other.git")
+
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="system Git is required")
 def test_clone_into_absent_and_empty_directories(tmp_path: Path) -> None:
@@ -40,10 +43,10 @@ def test_clone_into_absent_and_empty_directories(tmp_path: Path) -> None:
     clone_or_sync_repository(str(remote), absent)
     clone_or_sync_repository(str(remote), empty)
 
-    assert (absent / "config.json").read_bytes() == b"[]\n"
-    assert (empty / "config.json").read_bytes() == b"[]\n"
+    assert (absent / "config.json").read_text(encoding="utf-8") == "[]\n"
+    assert (empty / "config.json").read_text(encoding="utf-8") == "[]\n"
     with Repo(absent, search_parent_directories=False) as repo:
-        assert repo.remotes.origin.url == str(remote)
+        assert git_repo_service._remote_urls_match(repo.remotes.origin.url, str(remote))
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="system Git is required")

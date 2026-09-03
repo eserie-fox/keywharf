@@ -13,3 +13,12 @@ jobs:
   ci:
     name: ci
     uses: eserie-fox/github-workflows/.github/workflows/python-ci.yml@main
+    with:
+      test-targets: >-
+        [
+          {"runner":"ubuntu-latest","python":"3.11"},
+          {"runner":"ubuntu-latest","python":"3.13"},
+          {"runner":"windows-latest","python":"3.11"},
+          {"runner":"macos-latest","python":"3.11"}
+        ]
+      typecheck: true
