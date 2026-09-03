@@ -121,5 +121,5 @@ def expand_workspace_root(
     if WORKSPACE_TOKEN not in text:
         return value
 
-    expanded = text.replace(WORKSPACE_TOKEN, str(workspace_root))
-    return Path(expanded) if isinstance(value, Path) else expanded
+    expanded = Path(text.replace(WORKSPACE_TOKEN, str(workspace_root)))
+    return expanded if isinstance(value, Path) else str(expanded)

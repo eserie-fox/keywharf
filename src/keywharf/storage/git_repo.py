@@ -5,7 +5,7 @@ import re
 import shutil
 from collections.abc import Iterator
 from contextlib import contextmanager
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import TYPE_CHECKING
 
 from keywharf.domain.errors import KeywharfError
@@ -41,7 +41,7 @@ def clone_or_sync_repository(remote_url: str, local_path: Path) -> None:
         with _open_exact_repository(local_path) as repo:
             origin = _require_origin(repo, local_path)
             current_url = _origin_url(origin, local_path)
-            if current_url != remote_url:
+            if not _remote_urls_match(current_url, remote_url):
                 raise KeywharfError(
                     f"Host repo remote URL mismatch for {local_path}: "
                     f"origin={_redact_url_userinfo(current_url)}, "
@@ -79,7 +79,7 @@ def _clone_repository(remote_url: str, local_path: Path) -> None:
         try:
             _verify_worktree_root(repo, local_path)
             origin = _require_origin(repo, local_path)
-            if _origin_url(origin, local_path) != remote_url:
+            if not _remote_urls_match(_origin_url(origin, local_path), remote_url):
                 raise KeywharfError(
                     f"Cloned host repo origin does not match configured remote: {local_path}"
                 )
@@ -134,6 +134,14 @@ def _require_origin(repo: Repo, local_path: Path) -> Remote:
 def _origin_url(origin: Remote, local_path: Path) -> str:
     with _translate_git_failures(f"read host repo origin at {local_path}"):
         return origin.url
+
+
+def _remote_urls_match(actual: str, configured: str) -> bool:
+    actual_windows_path = PureWindowsPath(actual)
+    configured_windows_path = PureWindowsPath(configured)
+    if actual_windows_path.is_absolute() and configured_windows_path.is_absolute():
+        return actual_windows_path == configured_windows_path
+    return actual == configured
 
 
 def _not_repository_error(local_path: Path) -> KeywharfError:
