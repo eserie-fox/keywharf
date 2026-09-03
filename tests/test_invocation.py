@@ -59,7 +59,10 @@ class FakeContext:
         return self.sources.get(name)
 
 
-def test_build_command_invocation_serializes_typer_like_parameters_without_click_types() -> None:
+def test_build_command_invocation_serializes_typer_like_parameters_without_click_types(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "keywharf" / "config.json"
     root = FakeContext(
         command=FakeCommand(
             "keywharf",
@@ -70,7 +73,7 @@ def test_build_command_invocation_serializes_typer_like_parameters_without_click
             ],
         ),
         params={
-            "config": Path("/tmp/keywharf/config.json"),
+            "config": config_path,
             "workspace": None,
             "install_completion": False,
         },
@@ -120,7 +123,7 @@ def test_build_command_invocation_serializes_typer_like_parameters_without_click
 
     assert invocation.argv == [
         "--config",
-        "/tmp/keywharf/config.json",
+        str(config_path),
         "select",
         "demo",
         "--endpoint",
@@ -133,7 +136,9 @@ def test_build_command_invocation_serializes_typer_like_parameters_without_click
     ]
 
 
-def test_build_command_invocation_serializes_overridden_default_options() -> None:
+def test_build_command_invocation_serializes_overridden_default_options(tmp_path: Path) -> None:
+    default_directory = tmp_path / "default"
+    override_directory = tmp_path / "override"
     root = FakeContext(
         command=FakeCommand("keywharf", []),
         params={},
@@ -147,7 +152,7 @@ def test_build_command_invocation_serializes_overridden_default_options() -> Non
                 FakeOption("directory", ["--directory"]),
             ],
         ),
-        params={"workspace_name": "demo", "directory": Path("/root")},
+        params={"workspace_name": "demo", "directory": default_directory},
         sources={
             "workspace_name": FakeParameterSource("COMMANDLINE"),
             "directory": FakeParameterSource("DEFAULT"),
@@ -158,7 +163,7 @@ def test_build_command_invocation_serializes_overridden_default_options() -> Non
 
     invocation = build_command_invocation(
         init,
-        overrides={"directory": Path("/tmp")},
+        overrides={"directory": override_directory},
     )
 
-    assert invocation.argv == ["init", "demo", "--directory", "/tmp"]
+    assert invocation.argv == ["init", "demo", "--directory", str(override_directory)]

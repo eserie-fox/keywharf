@@ -40,7 +40,7 @@ def test_main_exits_cleanly_for_keywharf_errors(tmp_path: Path) -> None:
     env = os.environ.copy()
     pythonpath = str(repo_root / "src")
     existing_pythonpath = env.get("PYTHONPATH")
-    env["PYTHONPATH"] = f"{pythonpath}:{existing_pythonpath}" if existing_pythonpath else pythonpath
+    env["PYTHONPATH"] = os.pathsep.join(path for path in (pythonpath, existing_pythonpath) if path)
 
     result = subprocess.run(
         [
