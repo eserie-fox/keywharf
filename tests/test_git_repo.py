@@ -40,8 +40,8 @@ def test_clone_into_absent_and_empty_directories(tmp_path: Path) -> None:
     clone_or_sync_repository(str(remote), absent)
     clone_or_sync_repository(str(remote), empty)
 
-    assert (absent / "config.json").read_bytes() == b"[]\n"
-    assert (empty / "config.json").read_bytes() == b"[]\n"
+    assert (absent / "config.json").read_text(encoding="utf-8") == "[]\n"
+    assert (empty / "config.json").read_text(encoding="utf-8") == "[]\n"
     with Repo(absent, search_parent_directories=False) as repo:
         assert repo.remotes.origin.url == str(remote)
 
