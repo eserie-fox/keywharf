@@ -98,6 +98,7 @@ def test_select_writes_state_and_upserts_existing_selection(tmp_path: Path) -> N
     assert read_json(config.state_path)["selected_hosts"] == [
         {
             "server_name": "demo",
+            "host_names": ["demo"],
             "endpoint_name": "private",
             "authentication_name": "work",
         }
@@ -159,6 +160,7 @@ def test_select_uses_stable_names_not_array_indexes(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     assert read_json(config.state_path)["selected_hosts"][0] == {
         "server_name": "demo",
+        "host_names": ["demo"],
         "endpoint_name": "private",
         "authentication_name": "work",
     }
@@ -225,6 +227,7 @@ def test_select_prompts_for_endpoint_and_auth_when_both_are_ambiguous(
     assert read_json(config.state_path)["selected_hosts"] == [
         {
             "server_name": "demo",
+            "host_names": ["demo"],
             "endpoint_name": "private",
             "authentication_name": "home",
         }
@@ -278,6 +281,7 @@ def test_select_prompts_only_for_endpoint_when_auth_is_singleton(
     assert read_json(config.state_path)["selected_hosts"] == [
         {
             "server_name": "demo",
+            "host_names": ["demo"],
             "endpoint_name": "private",
             "authentication_name": "home",
         }
@@ -326,6 +330,7 @@ def test_select_prompts_only_for_auth_when_endpoint_is_singleton(
     assert read_json(config.state_path)["selected_hosts"] == [
         {
             "server_name": "demo",
+            "host_names": ["demo"],
             "endpoint_name": "public",
             "authentication_name": "work",
         }
@@ -349,6 +354,7 @@ def test_select_single_endpoint_and_auth_succeeds_without_prompt(
     assert read_json(config.state_path)["selected_hosts"] == [
         {
             "server_name": "demo",
+            "host_names": ["demo"],
             "endpoint_name": None,
             "authentication_name": None,
         }
@@ -492,6 +498,7 @@ def test_select_reprompts_after_invalid_interactive_choice(
     assert read_json(config.state_path)["selected_hosts"] == [
         {
             "server_name": "demo",
+            "host_names": ["demo"],
             "endpoint_name": "private",
             "authentication_name": "home",
         }

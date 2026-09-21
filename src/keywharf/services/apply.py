@@ -16,6 +16,7 @@ from keywharf.services.privilege import (
 )
 from keywharf.services.render import render_selected_state
 from keywharf.storage.host_repo import host_repo_config_path
+from keywharf.storage.managed_files import read_managed_config
 from keywharf.storage.ssh_files import copy_identity_file, delete_identity_file
 
 
@@ -35,7 +36,7 @@ def apply_selected_state(
         )
 
     changed = (
-        not render_result.in_sync
+        read_managed_config(config) != render_result.content
         or bool(render_result.planned_key_copies)
         or bool(render_result.planned_key_deletes)
     )

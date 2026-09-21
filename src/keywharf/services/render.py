@@ -80,12 +80,14 @@ def render_selected_state(config: ResolvedManagerConfig) -> RenderResult:
         key=lambda item: item.as_posix(),
     )
 
-    desired_hosts.sort(key=lambda host: host.name or "")
+    desired_hosts.sort(key=lambda host: host.server_name or "")
     content = render_managed_config(desired_hosts)
-    current_hosts.sort(key=lambda host: host.name or "")
+    current_hosts.sort(key=lambda host: host.server_name or "")
     state_names = {item.server_name for item in state.selected_hosts}
     orphaned_hosts = sorted(
-        host.name for host in current_hosts if host.name and host.name not in state_names
+        host.server_name
+        for host in current_hosts
+        if host.server_name and host.server_name not in state_names
     )
 
     return RenderResult(

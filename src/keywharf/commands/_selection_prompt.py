@@ -12,9 +12,45 @@ from keywharf.domain.models import (
     HostAuthenticationOption,
     HostDefinition,
     HostEndpointOption,
+    SelectedHostState,
 )
+from keywharf.services.host_definitions import resolve_host_names
 
 OptionT = TypeVar("OptionT", HostEndpointOption, HostAuthenticationOption)
+
+
+def complete_host_names(
+    host_definitions: dict[str, HostDefinition],
+    *,
+    server_name: str,
+    requested_names: list[str] | None,
+    previous: SelectedHostState | None,
+) -> list[str]:
+    host = host_definitions.get(server_name)
+    if host is None:
+        raise KeywharfError(f"Unknown canonical ServerName: {server_name}")
+    default = resolve_host_names(
+        host,
+        requested_names
+        if requested_names is not None
+        else (previous.host_names if previous else [server_name]),
+    )
+    available = [server_name, *host.aliases]
+    if requested_names is not None or len(available) == 1 or not _supports_interactive_selection():
+        return default
+    typer.echo(f"Select enabled SSH names for '{server_name}':")
+    for index, name in enumerate(available, start=1):
+        typer.echo(f"{index}. {name}")
+    default_numbers = ",".join(str(available.index(name) + 1) for name in default)
+    while True:
+        answer = typer.prompt("Enter SSH name numbers separated by commas", default=default_numbers)
+        try:
+            indices = [int(part.strip()) for part in answer.split(",")]
+            if any(index < 1 or index > len(available) for index in indices):
+                raise ValueError("SSH name number is out of range")
+            return resolve_host_names(host, [available[index - 1] for index in indices])
+        except (ValueError, KeywharfError) as exc:
+            typer.echo(f"Error: {exc}", err=True)
 
 
 def complete_selection_names(

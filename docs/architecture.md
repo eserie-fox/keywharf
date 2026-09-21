@@ -89,3 +89,44 @@ objects are closed explicitly at the storage boundary. Clone options are fixed a
 the exact configured worktree root, and `origin` must exactly match `host_repo_remote_url`. Pull remains
 fast-forward-only. Keywharf relies on the user's Git credential helpers and SSH configuration and never commits, pushes,
 stashes, resets, cleans, or changes remotes.
+
+## Canonical Identity and Enabled Names
+
+`HostDefinition.server_name` owns one connection and its managed keys. `aliases` declares available
+SSH names. `SelectedHostState.host_names` is a required explicit subset; `SSHHostConfig` carries
+both `server_name` and `host_names` structurally. Never infer canonical identity from the first
+emitted name, human comments, key filenames, or overlap with current selections.
+
+The domain validates literal names, strict lists, and deterministic enabled-set ordering. Services
+validate the case-insensitive repository namespace before resolution or writes, including unselected
+shells. Completeness remains separate: `validate` checks all definitions; render/apply require
+selected definitions to be complete. CRUD preserves shared arrays and aliases on unrelated edits.
+
+`LocalState.from_dict` contains the one bounded v1 input adapter. Everything after this boundary
+uses v2; successful state writes persist v2. Read-only commands and apply do not migrate files.
+No migration registry, per-alias configuration, or alias lookup for management selectors is used.
+
+Managed rendering adds `# keywharf-owner: <ServerName>` immediately before each `Host` directive.
+The parser consumes this reserved metadata separately from human comments and adapts legacy
+single-name blocks at the input boundary. Missing ownership on a multi-name block, duplicate
+owners, and conflicting names are errors before dictionaries can collapse them. Local status and
+orphan reporting compare canonical owners, so disjoint enabled-name changes remain pending on the
+same definition. No extra ownership manifest is introduced.
+
+Key targets remain `<managed_keys_dir>/<ServerName>/<source-basename>`. Name-only changes need no
+key copies or movement. Apply validates first, copies needed keys, atomically replaces the managed
+fragment, then cleans stale keys. A failed replacement cannot trigger stale cleanup. Empty-state
+protection and `--allow-empty` still apply. Aliases never alter known-hosts or user SSH policy.
+
+## Human Comment Boundary
+
+`domain/comments.py` owns comment normalization and the reserved ownership-prefix policy. Models
+normalize LF/CRLF and outer whitespace without discarding interior lines; parser accumulation and
+serialization use the same representation. Structural repository validation checks every comment
+with host/option context before persistence. Loading keeps forbidden comments available for explicit
+CRUD repair; rendering independently checks the policy for callers that bypass repository services.
+
+Apply's materialization decision compares fragment text, not only parsed semantic equality. The
+managed applier validates before skipping an identical fragment, using the storage reader's newline
+normalization. This avoids redundant replacements/backups while still writing legacy ownership
+metadata and preserving key-copy-before-config and cleanup-after-validation/write ordering.

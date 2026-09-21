@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from keywharf.config.resolver import ResolvedManagerConfig
+from keywharf.domain.errors import KeywharfError
 from keywharf.domain.models import HostDefinition
 from keywharf.domain.results import ValidationResult
 from keywharf.services.host_definitions import (
@@ -26,6 +27,8 @@ def validate_workspace(config: ResolvedManagerConfig) -> ValidationResult:
         host_definitions = load_host_definition_list(config)
     except FileNotFoundError:
         return ValidationResult(ok=False, errors=[missing_host_repo_config_message(config)])
+    except (ValueError, KeywharfError) as exc:
+        return ValidationResult(ok=False, errors=[str(exc)])
 
     structure_validation = validate_host_repo_structure(config, host_definitions)
     errors.extend(structure_validation.errors)
@@ -102,7 +105,7 @@ def _collect_workspace_warnings(
         return warnings
 
     state_names = {item.server_name for item in state.selected_hosts}
-    current_names = {item.name for item in current_hosts if item.name}
+    current_names = {item.server_name for item in current_hosts if item.server_name}
     orphaned = sorted(name for name in current_names - state_names if name)
     if orphaned:
         warnings.append(

@@ -68,6 +68,31 @@ keywharf --workspace ~/demo install-include
 
 If the manager config lives outside the default workspace root, use `--config <path>` instead of `--workspace`.
 
+## Canonical Identity and SSH Names
+
+One `ServerName` identifies a connection definition. Optional shared `Aliases` declare additional
+literal SSH names; each client explicitly selects a non-empty subset with repeated `--name`:
+
+```bash
+keywharf repo host add demo-node-01 --alias dev --alias work
+# Add the endpoint and authentication separately.
+keywharf select demo-node-01 --endpoint direct --auth developer --name demo-node-01 --name dev
+keywharf select demo-node-01 --endpoint direct --auth developer --name dev
+```
+
+All enabled names share one connection block and canonical key copy. Management commands always
+use `ServerName`. Without `--name`, first selection defaults to canonical-only and reselection
+preserves names. A terminal offers a numbered multi-selection with that default when aliases exist.
+Adding an alias never enables it automatically. Removing an enabled alias requires explicit
+replacement; renaming a canonical identifier requires new client selections even if the old name
+remains an alias.
+
+State is now v2. V1 loads in memory with canonical-only names; only successful `select`/`deselect`
+writes upgrade retained entries. `apply` does not rewrite state. Upgrade every client/editor before
+introducing shared aliases or private renames. Downgrade needs coordinated original-file restoration,
+not a version-number edit. See [configuration](docs/configuration.md#state-upgrade-and-coordinated-rollout)
+and [CLI details](docs/cli.md#selecting-ssh-names-and-editing-aliases).
+
 ## Ownership Boundary
 
 `keywharf` manages:
@@ -143,7 +168,7 @@ These commands do not commit, push, run `git init`, or mutate git metadata. They
 
 Design rules:
 
-- `repo host add` creates a host shell and may set only the host comment
+- `repo host add` creates a host shell and may set its comment and aliases
 - `repo host endpoint ...` manages named endpoint options with `HostName`, optional `Port`, and optional comment
 - `repo host auth ...` manages named authentication options with optional `User`, optional `IdentityFile`, and optional comment
 - `select` writes name-based endpoint/authentication selectors into local state; singleton selections may leave those fields `null`

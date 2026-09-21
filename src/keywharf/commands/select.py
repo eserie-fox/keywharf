@@ -9,16 +9,22 @@ from keywharf.commands._privilege import (
     maybe_reexec_with_sudo,
     raise_for_missing_privileges,
 )
-from keywharf.commands._selection_prompt import complete_selection_names
+from keywharf.commands._selection_prompt import complete_host_names, complete_selection_names
 from keywharf.commands.context import get_host_definitions, get_manager_config
-from keywharf.services.selections import analyze_select_root_requirements, select_host
+from keywharf.services.selections import (
+    analyze_select_root_requirements,
+    load_selected_state,
+    select_host,
+)
 
 
 def register(app: typer.Typer) -> None:
     @app.command("select")
     def select_command(
         ctx: typer.Context,
-        server_name: str = typer.Argument(..., help="Host name to select from the host repo."),
+        server_name: str = typer.Argument(
+            ..., help="Canonical ServerName to select from the host repo."
+        ),
         endpoint: str | None = typer.Option(
             None,
             "--endpoint",
@@ -34,6 +40,9 @@ def register(app: typer.Typer) -> None:
                 "Stable AuthenticationName to select. Omit to auto-select a singleton "
                 "authentication or prompt in an interactive terminal."
             ),
+        ),
+        names: list[str] | None = typer.Option(
+            None, "--name", help="Enable this literal SSH name; repeat to replace the enabled set."
         ),
         sudo: bool = typer.Option(
             False,
@@ -60,6 +69,12 @@ def register(app: typer.Typer) -> None:
             subject="the state file",
         )
         host_definitions = get_host_definitions(ctx)
+        host_names = complete_host_names(
+            host_definitions,
+            server_name=server_name,
+            requested_names=names or None,
+            previous=load_selected_state(config).get(server_name),
+        )
         endpoint_name, authentication_name = complete_selection_names(
             host_definitions,
             server_name=server_name,
@@ -72,6 +87,7 @@ def register(app: typer.Typer) -> None:
             server_name=server_name,
             endpoint_name=endpoint_name,
             authentication_name=authentication_name,
+            host_names=host_names,
         )
         typer.echo(
             f"Selected '{selection.server_name}' in local state. "

@@ -27,7 +27,7 @@ def test_init_state_template_resource_is_readable() -> None:
         .read_text(encoding="utf-8")
     )
 
-    assert payload == {"version": 1, "selected_hosts": []}
+    assert payload == {"version": 2, "selected_hosts": []}
 
 
 def test_jinja_templates_are_packaged_and_renderable() -> None:

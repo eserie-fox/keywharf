@@ -9,7 +9,7 @@ from keywharf.domain.models import (
     LocalState,
     SelectedHostState,
 )
-from keywharf.services.host_definitions import resolve_selection
+from keywharf.services.host_definitions import resolve_selection, validate_host_repo_structure
 from keywharf.services.privilege import can_read_path, can_write_file, root_owned_hint
 from keywharf.storage.host_repo import host_repo_config_path
 from keywharf.storage.state_store import load_state, save_state
@@ -26,15 +26,29 @@ def select_host(
     server_name: str,
     endpoint_name: str | None = None,
     authentication_name: str | None = None,
+    host_names: list[str] | None = None,
 ) -> tuple[LocalState, SelectedHostState]:
-    selection = SelectedHostState(
-        server_name=server_name,
-        endpoint_name=endpoint_name,
-        authentication_name=authentication_name,
+    validation = validate_host_repo_structure(config, list(host_definitions.values()))
+    if validation.errors:
+        raise KeywharfError("\n".join(validation.errors))
+    state = load_state(config)
+    previous = state.get(server_name)
+    enabled = (
+        host_names
+        if host_names is not None
+        else (previous.host_names if previous else [server_name])
     )
+    try:
+        selection = SelectedHostState(
+            server_name=server_name,
+            host_names=enabled,
+            endpoint_name=endpoint_name,
+            authentication_name=authentication_name,
+        )
+    except ValueError as exc:
+        raise KeywharfError(str(exc)) from exc
     resolve_selection(host_definitions, selection)
 
-    state = load_state(config)
     state.upsert(selection)
     save_state(config, state)
     return state, selection

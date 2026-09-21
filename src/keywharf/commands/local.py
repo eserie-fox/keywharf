@@ -50,7 +50,7 @@ def list_local(
         return
 
     table = Table(show_header=True, header_style="bold")
-    table.add_column("name")
+    table.add_column("ServerName")
     table.add_column("status")
     table.add_column("selection")
     table.add_column("desired")
@@ -74,7 +74,9 @@ def list_local(
 @app.command("show")
 def show_local(
     ctx: typer.Context,
-    server_name: str = typer.Argument(..., help="Selected host name to inspect."),
+    server_name: str = typer.Argument(
+        ..., help="Canonical ServerName to inspect in state or managed output."
+    ),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
 ) -> None:
     status = get_local_status(get_manager_config(ctx), server_name)
@@ -89,7 +91,7 @@ def show_local(
         typer.echo(json.dumps(payload, indent=2))
         return
 
-    console.print(f"Host: {status.server_name}")
+    console.print(f"ServerName: {status.server_name}")
     console.print(f"Status: {status.status}")
     _render_status_detail(status)
 
@@ -107,6 +109,8 @@ def _render_status_detail(item: LocalHostStatus) -> None:
     if item.selection is not None:
         console.print(f"Selection: {selection_summary(item.selection)}")
     if item.resolved_selection is not None:
+        aliases = item.resolved_selection.host_definition.aliases
+        console.print(f"Available aliases: {', '.join(aliases) or '-'}")
         endpoint_name = item.resolved_selection.endpoint.name or "<single>"
         auth_name = item.resolved_selection.authentication.name or "<single>"
         console.print(f"Resolved endpoint: {endpoint_name}")

@@ -203,7 +203,7 @@ def test_validate_rejects_duplicate_server_and_selector_names(tmp_path: Path) ->
     result = validate_workspace(config)
 
     assert result.ok is False
-    assert any("Duplicate ServerName 'demo'" in error for error in result.errors)
+    assert any("Duplicate SSH name 'demo'" in error for error in result.errors)
     assert any("duplicate EndPointName 'public'" in error for error in result.errors)
     assert any("duplicate AuthenticationName 'home'" in error for error in result.errors)
 

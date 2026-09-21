@@ -23,13 +23,15 @@ def emit_host_list(hosts: list[HostDefinition], *, json_output: bool) -> None:
         return
 
     table = Table(show_header=True, header_style="bold")
-    table.add_column("name")
+    table.add_column("ServerName")
+    table.add_column("Aliases")
     table.add_column("comment")
     table.add_column("endpoints", justify="right")
     table.add_column("auth", justify="right")
     for host in hosts:
         table.add_row(
             host.server_name or "",
+            ", ".join(host.aliases),
             host.comment or "",
             str(len(host.endpoints)),
             str(len(host.authentication)),
@@ -42,7 +44,8 @@ def emit_host(host: HostDefinition, *, json_output: bool) -> None:
         typer.echo(json.dumps(host.to_dict(), indent=2))
         return
 
-    console.print(f"Host: {host.server_name or ''}")
+    console.print(f"ServerName: {host.server_name or ''}")
+    console.print(f"Aliases: {', '.join(host.aliases) or '-'}")
     console.print(f"Comment: {host.comment or '-'}")
     console.print(render_endpoint_table(host.endpoints))
     console.print(render_auth_table(host.authentication))
