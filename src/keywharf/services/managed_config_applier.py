@@ -10,7 +10,7 @@ from pathlib import Path
 from keywharf.config.resolver import ResolvedManagerConfig
 from keywharf.domain.errors import KeywharfError
 from keywharf.ssh_config.parser import parse_ssh_config
-from keywharf.storage.managed_files import write_managed_config
+from keywharf.storage.managed_files import read_managed_config, write_managed_config
 
 
 def validate_managed_config(content: str) -> None:
@@ -43,5 +43,8 @@ def apply_managed_config(
     backup: bool = True,
 ) -> Path:
     validate_managed_config(content)
-    write_managed_config(config, content, backup=backup)
+    # Text reads normalize platform newlines. Semantic equality alone would miss
+    # legacy blocks that still need canonical ownership metadata written.
+    if read_managed_config(config) != content:
+        write_managed_config(config, content, backup=backup)
     return config.managed_config_path

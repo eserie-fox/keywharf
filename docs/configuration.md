@@ -183,7 +183,7 @@ Current edit boundary:
 1. validates
 2. renders
 3. copies new managed keys
-4. atomically replaces `managed_config_path`
+4. atomically replaces `managed_config_path` only if its text differs from the desired fragment
 5. deletes stale managed keys
 
 Safety rule:
@@ -291,3 +291,32 @@ old name in `Aliases` does not repair old `server_name` references. Clients must
 the old identifier, select the new definition with valid names and connection choices, then apply.
 Private node renames, endpoint-label normalization, and client file migration require a separate
 coordinated change using those actual files.
+
+## Human Comments and Unchanged Apply
+
+Host, endpoint, authentication, and `ExtraConfig` comments share one representation: LF line
+separators, trimmed outer whitespace, and preserved interior text, indentation, and blank lines.
+CRLF comments normalize to the same logical content as LF comments. Empty or whitespace-only
+comments are absent. The renderer writes one SSH comment line per logical line, including blank
+comment lines; the managed parser preserves those boundaries. Comments remain part of desired/current
+comparison, so a real comment edit makes local status pending until applied.
+
+The literal `# This file is managed by keywharf` is a file header only on the first physical line.
+The same text in a human comment elsewhere is preserved. Ownership metadata remains separate:
+every human comment line whose stripped, case-folded text starts with `keywharf-owner` is forbidden.
+Mentioning that term in the middle of an otherwise permitted line is allowed.
+
+This reserved-prefix rule is structural and applies to all comments, including unselected incomplete
+shells, unused endpoint/authentication options, and extra options. `validate` reports the canonical
+host and field/option. Repository writes validate the proposed result before changing files. Existing
+host/endpoint/authentication `--comment` and `--clear-comment` options can explicitly repair an invalid
+comment, provided the resulting repository is valid. Extra-option comments can be repaired in JSON;
+there is no extra-option CLI editor. Reads do not automatically repair or rewrite comments.
+
+`apply` validates even when no fragment write is needed. It compares desired fragment text with the
+current file using the existing universal-newline read behavior, so LF/CRLF alone does not cause a
+rewrite. An identical fragment is neither replaced nor backed up. Required key copies and stale-key
+cleanup still run in their existing order, and `changed` reports either text changes or key work.
+Legacy single-name blocks without ownership metadata still require a write even when their parsed
+connection settings match. After current-format output and keys match, a second apply reports no
+change and performs no fragment replacement, backup, key copy, or key deletion.

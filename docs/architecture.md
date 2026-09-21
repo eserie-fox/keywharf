@@ -117,3 +117,16 @@ Key targets remain `<managed_keys_dir>/<ServerName>/<source-basename>`. Name-onl
 key copies or movement. Apply validates first, copies needed keys, atomically replaces the managed
 fragment, then cleans stale keys. A failed replacement cannot trigger stale cleanup. Empty-state
 protection and `--allow-empty` still apply. Aliases never alter known-hosts or user SSH policy.
+
+## Human Comment Boundary
+
+`domain/comments.py` owns comment normalization and the reserved ownership-prefix policy. Models
+normalize LF/CRLF and outer whitespace without discarding interior lines; parser accumulation and
+serialization use the same representation. Structural repository validation checks every comment
+with host/option context before persistence. Loading keeps forbidden comments available for explicit
+CRUD repair; rendering independently checks the policy for callers that bypass repository services.
+
+Apply's materialization decision compares fragment text, not only parsed semantic equality. The
+managed applier validates before skipping an identical fragment, using the storage reader's newline
+normalization. This avoids redundant replacements/backups while still writing legacy ownership
+metadata and preserving key-copy-before-config and cleanup-after-validation/write ordering.

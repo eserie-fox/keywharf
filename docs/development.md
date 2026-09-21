@@ -135,11 +135,14 @@ Keep generated noise out of the repository:
 
 ## Explicit SSH Name Verification
 
-Focused coverage: `uv run pytest tests/test_aliases.py`. This exercises CLI CRUD, state v1/v2,
+Focused alias coverage: `uv run pytest tests/test_aliases.py`. This exercises CLI CRUD, state v1/v2,
 interactive cancellation, repeated sudo argument reconstruction (without executing sudo), ownership
 round trips, disjoint name changes, and managed replacement failure safety. The disposable CLI flow
 creates a shell, adds endpoint/authentication, selects both names, renders/applies, inspects status,
 switches to alias-only and a disjoint alias, reapplies, then deselects and clears with `--allow-empty`.
+
+Comment fidelity, reserved-prefix validation/repair, and unchanged-apply regressions:
+`uv run pytest tests/test_comments.py`.
 
 The optional OpenSSH test uses `ssh -G -F <temporary-config> <name>` for both enabled names and
 compares hostname, port, user, and identity path. It uses a documentation-only literal IP and no

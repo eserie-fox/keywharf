@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
 
+from keywharf.domain.comments import normalize_comment
+
 
 def _clean_string(value: object | None) -> str | None:
     if value is None:
@@ -169,13 +171,16 @@ class HostEndpointOption:
     port: int | None = None
     comment: str | None = None
 
+    def __post_init__(self) -> None:
+        self.comment = normalize_comment(self.comment)
+
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> HostEndpointOption:
         return cls(
             name=_clean_string(payload.get("EndPointName")),
             hostname=_clean_string(payload.get("HostName")),
             port=_clean_int(payload.get("Port")),
-            comment=_clean_string(payload.get("Comment")),
+            comment=normalize_comment(payload.get("Comment")),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -186,8 +191,9 @@ class HostEndpointOption:
             payload["HostName"] = self.hostname
         if self.port is not None:
             payload["Port"] = self.port
-        if self.comment is not None:
-            payload["Comment"] = self.comment
+        comment = normalize_comment(self.comment)
+        if comment is not None:
+            payload["Comment"] = comment
         return payload
 
 
@@ -198,13 +204,16 @@ class HostAuthenticationOption:
     identity_file: str | None = None
     comment: str | None = None
 
+    def __post_init__(self) -> None:
+        self.comment = normalize_comment(self.comment)
+
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> HostAuthenticationOption:
         return cls(
             name=_clean_string(payload.get("AuthenticationName")),
             user=_clean_string(payload.get("User")),
             identity_file=_clean_string(payload.get("IdentityFile")),
-            comment=_clean_string(payload.get("Comment")),
+            comment=normalize_comment(payload.get("Comment")),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -215,8 +224,9 @@ class HostAuthenticationOption:
             payload["User"] = self.user
         if self.identity_file is not None:
             payload["IdentityFile"] = self.identity_file
-        if self.comment is not None:
-            payload["Comment"] = self.comment
+        comment = normalize_comment(self.comment)
+        if comment is not None:
+            payload["Comment"] = comment
         return payload
 
 
@@ -226,12 +236,15 @@ class HostExtraConfig:
     value: str | None = None
     comment: str | None = None
 
+    def __post_init__(self) -> None:
+        self.comment = normalize_comment(self.comment)
+
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> HostExtraConfig:
         return cls(
             key=_clean_string(payload.get("Key")),
             value=_clean_string(payload.get("Value")),
-            comment=_clean_string(payload.get("Comment")),
+            comment=normalize_comment(payload.get("Comment")),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -240,8 +253,9 @@ class HostExtraConfig:
             payload["Key"] = self.key
         if self.value is not None:
             payload["Value"] = self.value
-        if self.comment is not None:
-            payload["Comment"] = self.comment
+        comment = normalize_comment(self.comment)
+        if comment is not None:
+            payload["Comment"] = comment
         return payload
 
 
@@ -265,13 +279,14 @@ class HostDefinition:
 
     def __post_init__(self) -> None:
         self.validate_names()
+        self.comment = normalize_comment(self.comment)
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> HostDefinition:
         return cls(
             server_name=payload.get("ServerName"),
             aliases=payload.get("Aliases", []),
-            comment=_clean_string(payload.get("Comment")),
+            comment=normalize_comment(payload.get("Comment")),
             endpoints=[HostEndpointOption.from_dict(item) for item in payload.get("Endpoint", [])],
             authentication=[
                 HostAuthenticationOption.from_dict(item)
@@ -289,8 +304,9 @@ class HostDefinition:
             payload["ServerName"] = self.server_name
         if self.aliases:
             payload["Aliases"] = list(self.aliases)
-        if self.comment is not None:
-            payload["Comment"] = self.comment
+        comment = normalize_comment(self.comment)
+        if comment is not None:
+            payload["Comment"] = comment
         if self.endpoints:
             payload["Endpoint"] = [item.to_dict() for item in self.endpoints]
         if self.authentication:
@@ -306,11 +322,15 @@ class SSHEndpoint:
     port: int | None = None
     comment: str | None = None
 
+    def __post_init__(self) -> None:
+        self.comment = normalize_comment(self.comment)
+
     def add_comment(self, comment: str) -> None:
-        comment = comment.strip()
-        if not comment:
+        incoming = normalize_comment(comment)
+        if incoming is None:
             return
-        self.comment = f"{self.comment} {comment}".strip() if self.comment else comment
+        current = normalize_comment(self.comment)
+        self.comment = f"{current}\n{incoming}" if current else incoming
 
     def add_config(self, key: str, value: str, comment: str) -> bool:
         if key == "HostName":
@@ -326,7 +346,7 @@ class SSHEndpoint:
         return {
             "hostname": self.hostname,
             "port": self.port,
-            "comment": self.comment,
+            "comment": normalize_comment(self.comment),
         }
 
 
@@ -337,11 +357,15 @@ class SSHAuthentication:
     source_identity_file: str | None = None
     comment: str | None = None
 
+    def __post_init__(self) -> None:
+        self.comment = normalize_comment(self.comment)
+
     def add_comment(self, comment: str) -> None:
-        comment = comment.strip()
-        if not comment:
+        incoming = normalize_comment(comment)
+        if incoming is None:
             return
-        self.comment = f"{self.comment} {comment}".strip() if self.comment else comment
+        current = normalize_comment(self.comment)
+        self.comment = f"{current}\n{incoming}" if current else incoming
 
     def add_config(self, key: str, value: str, comment: str) -> bool:
         if key == "User":
@@ -358,7 +382,7 @@ class SSHAuthentication:
         return {
             "user": self.user,
             "identity_file": self.identity_file,
-            "comment": self.comment,
+            "comment": normalize_comment(self.comment),
         }
 
 
@@ -368,11 +392,14 @@ class SSHExtraConfig:
     value: str | None = None
     comment: str | None = None
 
+    def __post_init__(self) -> None:
+        self.comment = normalize_comment(self.comment)
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "key": self.key,
             "value": self.value,
-            "comment": self.comment,
+            "comment": normalize_comment(self.comment),
         }
 
 
@@ -385,6 +412,9 @@ class SSHHostConfig:
     authentication: SSHAuthentication = field(default_factory=SSHAuthentication)
     extra_config: list[SSHExtraConfig] = field(default_factory=list)
 
+    def __post_init__(self) -> None:
+        self.comment = normalize_comment(self.comment)
+
     def add_config(self, key: str, value: str, comment: str) -> None:
         stripped_value = value.strip("'\"")
         if self.endpoint.add_config(key, stripped_value, comment):
@@ -395,7 +425,7 @@ class SSHHostConfig:
             SSHExtraConfig(
                 key=_clean_string(key),
                 value=_clean_string(stripped_value),
-                comment=_clean_string(comment),
+                comment=normalize_comment(comment),
             )
         )
 
@@ -409,7 +439,7 @@ class SSHHostConfig:
         return {
             "server_name": self.server_name,
             "host_names": normalize_host_names(self.server_name, self.host_names),
-            "comment": self.comment,
+            "comment": normalize_comment(self.comment),
             "endpoint": self.endpoint.to_dict(),
             "authentication": self.authentication.to_dict(),
             "extra_config": [item.to_dict() for item in self.extra_config],

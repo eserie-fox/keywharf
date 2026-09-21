@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from typing import Protocol, TypeVar
 
 from keywharf.config.resolver import ResolvedManagerConfig
+from keywharf.domain.comments import validate_comment
 from keywharf.domain.errors import KeywharfError
 from keywharf.domain.models import (
     HostAuthenticationOption,
@@ -62,6 +63,24 @@ def validate_host_repo_structure(
     errors.extend(validate_host_namespace(host_definitions))
     for host_definition in host_definitions:
         server_name = host_definition.server_name
+        comments = [("Comment", host_definition.comment)]
+        comments.extend(
+            (f"Endpoint[{index}] ({option.name or '<unnamed>'}).Comment", option.comment)
+            for index, option in enumerate(host_definition.endpoints)
+        )
+        comments.extend(
+            (f"Authentication[{index}] ({option.name or '<unnamed>'}).Comment", option.comment)
+            for index, option in enumerate(host_definition.authentication)
+        )
+        comments.extend(
+            (f"ExtraConfig[{index}] ({option.key or '<unnamed>'}).Comment", option.comment)
+            for index, option in enumerate(host_definition.extra_config)
+        )
+        for field_name, comment in comments:
+            try:
+                validate_comment(comment)
+            except ValueError as exc:
+                errors.append(f"Host '{server_name}' {field_name}: {exc}")
         if not server_name:
             continue
 

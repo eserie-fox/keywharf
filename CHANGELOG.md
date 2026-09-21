@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- preserve multiline human comments, internal blank lines, and LF/CRLF equivalence through
+  definition loading, SSH rendering/parsing, and local status comparison
+- reject reserved ownership-comment prefixes during structural validation and before repo writes,
+  with host/option context, while permitting explicit comment replacement or clearing to repair files
+- skip unchanged managed-fragment writes and backups after validation; report required legacy-format
+  updates and key-only materialization accurately
+
 - add shared `Aliases` and explicit per-client `host_names`, with canonical `ServerName` ownership
 - add repeatable `select --name`, interactive name selection, and host `--alias`/`--clear-aliases` CRUD
 - enforce literal SSH names and a case-insensitive repository-wide canonical/alias namespace

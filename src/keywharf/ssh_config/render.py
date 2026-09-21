@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from keywharf.domain.comments import normalize_comment, validate_comment
 from keywharf.domain.models import SSHHostConfig, normalize_host_names
 from keywharf.storage.ssh_files import MANAGED_SSH_HEADER
 
@@ -29,11 +30,11 @@ def _indented(indent: int, text: str) -> str:
 
 
 def _render_comment(comment: str | None, indent: int) -> list[str]:
-    if not comment:
+    validate_comment(comment)
+    comment = normalize_comment(comment)
+    if comment is None:
         return []
-    lines = comment.splitlines()
-    if any(line.strip().casefold().startswith("keywharf-owner") for line in lines):
-        raise ValueError("Human comments cannot use reserved keywharf-owner metadata")
+    lines = comment.split("\n")
     return [_indented(indent, f"# {line}") for line in lines]
 
 
