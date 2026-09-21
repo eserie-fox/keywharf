@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from keywharf.config.resolver import ResolvedManagerConfig
+from keywharf.domain.errors import KeywharfError
 from keywharf.domain.models import SSHHostConfig
 from keywharf.services.managed_config_applier import apply_managed_config
 from keywharf.services.managed_config_renderer import render_managed_config
@@ -14,7 +15,10 @@ def load_managed_hosts(config: ResolvedManagerConfig) -> list[SSHHostConfig]:
     content = read_managed_config(config)
     if not content.strip():
         return []
-    return sorted(parse_ssh_config(content), key=lambda host: host.name or "")
+    try:
+        return sorted(parse_ssh_config(content), key=lambda host: host.server_name)
+    except ValueError as exc:
+        raise KeywharfError(f"Invalid managed config: {exc}") from exc
 
 
 def render_managed_hosts(hosts: list[SSHHostConfig]) -> str:

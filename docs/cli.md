@@ -170,3 +170,38 @@ Behavior:
   resets, stashes, cleans, or changes remotes
 - GitPython drives the required system Git executable, so system credential helpers and SSH settings still apply
 - normal commands do not rewrite the main SSH config
+
+## Selecting SSH Names and Editing Aliases
+
+```bash
+keywharf repo host add demo-node-01 --alias dev --alias work
+# Add endpoint/authentication options separately; aliases do not complete a host shell.
+keywharf select demo-node-01 --endpoint direct --auth developer --name demo-node-01 --name dev
+keywharf select demo-node-01 --endpoint direct --auth developer --name dev
+keywharf repo host update demo-node-01 --alias dev
+keywharf repo host update demo-node-01 --clear-aliases
+```
+
+Repeated `--name` **replaces** the enabled set. Duplicate, malformed, or undeclared names fail
+before saving. Without `--name`, noninteractive first selection enables only `ServerName`, and
+reselection preserves the enabled set, including when endpoint/authentication choices change.
+In a terminal, multiple available names produce a numbered multi-selection prompt accepting
+comma-separated numbers. Enter accepts the canonical-only or previous selection default. Explicit
+names or a single available name suppress this prompt. Cancellation/EOF leaves state unchanged.
+A stale enabled name requires explicit `--name` replacement, even in an interactive terminal.
+Endpoint/authentication singleton and noninteractive ambiguity rules remain unchanged.
+
+On host add, omitted `--alias` means no aliases. On update, omission preserves aliases, repeated
+`--alias` replaces them, and `--clear-aliases` empties them. Replacement and clearing conflict.
+Failed edits leave the file unchanged. Edits preserve unrelated fields and array order; they do
+not alter local state or run `apply`. Removal/rename warnings identify affected local selections.
+All management selectors take canonical `ServerName`; aliases are never resolved as identifiers.
+
+Repo JSON includes `Aliases` when non-empty. Local `selection` JSON includes `host_names`.
+Rendered/current/desired SSH objects now use `server_name` and `host_names` instead of the old
+single `name` field. Human repo views show available aliases; local views show enabled names.
+The read-only convenience facades return the same shapes as their canonical commands. Repeated
+`--name` and `--alias` survive sudo reconstruction as separate options.
+
+See [configuration](configuration.md#state-upgrade-and-coordinated-rollout) for v1 conversion,
+state-write timing, rename consequences, and software-first rollout/downgrade limitations.

@@ -44,3 +44,22 @@ keywharf --workspace {{ workspace_root }} install-include
 `select` still accepts explicit `--endpoint` and `--auth` stable names. If one side has a single candidate, it is selected automatically. If one side has multiple candidates, `select` prompts in an interactive terminal and fails fast in noninteractive environments until you pass the stable name explicitly. Local state keeps name-based selectors; singleton selections may leave `endpoint_name` or `authentication_name` as `null`.
 
 Hosts may exist as shells before they are usable. `validate` reports every host that is still missing endpoint options, authentication options, or both. `render` and `apply` only require selected hosts to be complete.
+
+Optional shared `Aliases` declare available SSH names for each canonical `ServerName`:
+
+```bash
+keywharf --workspace {{ workspace_root }} repo host update demo-node-01 --alias dev --alias work
+keywharf --workspace {{ workspace_root }} select demo-node-01 --name demo-node-01 --name dev
+```
+
+Repeated `--name` replaces the enabled set. Omission defaults to canonical-only on first selection
+and preserves existing names on reselection. A terminal offers numbered multi-selection when
+multiple names are available; Enter accepts that default. Explicit names suppress the prompt.
+Removed enabled aliases need explicit replacement. `--alias` replaces shared aliases on update;
+omission preserves them, and `--clear-aliases` clears them (it conflicts with `--alias`).
+
+State uses schema v2. Legacy v1 loads canonical-only names in memory; only successful `select` or
+`deselect` rewrites state to v2. Render, views, validation, and apply never migrate the state file.
+Upgrade every client/editor before adding shared aliases or changing canonical/endpoint names.
+A canonical rename does not repair old client references even if the old name is kept as an alias.
+Downgrade requires coordinated restoration of original compatible files, not a version-number edit.

@@ -13,6 +13,7 @@ from keywharf.domain.models import (
     HostEndpointOption,
     SelectedHostState,
     SSHHostConfig,
+    normalize_host_names,
 )
 from keywharf.domain.results import ResolvedHostSelection, ValidationResult
 from keywharf.ssh_config.builder import SSHHostConfigChoice, build_host_config
@@ -27,20 +28,23 @@ OptionT = TypeVar("OptionT", HostEndpointOption, HostAuthenticationOption)
 
 
 def load_host_definition_list(config: ResolvedManagerConfig) -> list[HostDefinition]:
-    return [HostDefinition.from_dict(item) for item in load_host_repo_entries(config)]
+    try:
+        return [HostDefinition.from_dict(item) for item in load_host_repo_entries(config)]
+    except ValueError as exc:
+        raise KeywharfError(f"Invalid host repo config: {exc}") from exc
 
 
 def load_host_definition_map(
     config: ResolvedManagerConfig,
 ) -> dict[str, HostDefinition]:
     mapping: dict[str, HostDefinition] = {}
-    for host_definition in load_host_definition_list(config):
+    definitions = load_host_definition_list(config)
+    validation = validate_host_repo_structure(config, definitions, allow_empty=True)
+    if validation.errors:
+        raise KeywharfError("\n".join(validation.errors))
+    for host_definition in definitions:
         if not host_definition.server_name:
             continue
-        if host_definition.server_name in mapping:
-            raise KeywharfError(
-                f"Host repo config contains duplicate ServerName '{host_definition.server_name}'."
-            )
         mapping[host_definition.server_name] = host_definition
     return mapping
 
@@ -55,16 +59,11 @@ def validate_host_repo_structure(
     if not host_definitions and not allow_empty:
         errors.append("Host repo config is empty.")
 
-    seen_server_names: set[str] = set()
+    errors.extend(validate_host_namespace(host_definitions))
     for host_definition in host_definitions:
         server_name = host_definition.server_name
         if not server_name:
-            errors.append("Host repo entry is missing ServerName.")
             continue
-        if server_name in seen_server_names:
-            errors.append(f"Duplicate ServerName '{server_name}' in host repo config.")
-        else:
-            seen_server_names.add(server_name)
 
         errors.extend(
             _validate_named_options(
@@ -97,6 +96,48 @@ def validate_host_repo_structure(
                 errors.append(f"Identity file {identity_path.as_posix()} not found")
 
     return ValidationResult(ok=not errors, errors=errors)
+
+
+def validate_host_namespace(host_definitions: Sequence[HostDefinition]) -> list[str]:
+    errors: list[str] = []
+    seen: dict[str, str] = {}
+    for host in host_definitions:
+        try:
+            host.validate_names()
+        except ValueError as exc:
+            errors.append(str(exc))
+            continue
+        if not host.server_name:
+            errors.append("Host repo entry is missing ServerName.")
+            continue
+        for name in [host.server_name, *host.aliases]:
+            folded = name.casefold()
+            if folded in seen:
+                errors.append(
+                    f"Duplicate SSH name '{name}' in host repo namespace "
+                    f"(ServerName '{host.server_name}' conflicts with '{seen[folded]}')."
+                )
+            else:
+                seen[folded] = host.server_name
+    return errors
+
+
+def resolve_host_names(host: HostDefinition, host_names: object) -> list[str]:
+    try:
+        host.validate_names()
+        names = normalize_host_names(host.server_name or "", host_names)
+    except ValueError as exc:
+        raise KeywharfError(str(exc)) from exc
+    available = [host.server_name, *host.aliases]
+    missing = [name for name in names if name not in available]
+    if missing:
+        raise KeywharfError(
+            f"Host '{host.server_name}' no longer declares selected SSH names: "
+            f"{', '.join(missing)}. Replace them explicitly with "
+            f"'keywharf select {host.server_name} --name <declared-name>' "
+            "(repeat --name for each enabled name; include --endpoint/--auth as needed)."
+        )
+    return names
 
 
 def collect_incomplete_host_errors(
@@ -167,9 +208,17 @@ def validate_selection(
     host_definitions: dict[str, HostDefinition],
     selection: SelectedHostState,
 ) -> list[str]:
+    namespace_errors = validate_host_namespace(list(host_definitions.values()))
+    if namespace_errors:
+        return namespace_errors
     host_definition = host_definitions.get(selection.server_name)
     if host_definition is None:
         return [f"Selected host '{selection.server_name}' is not present in the host repo."]
+
+    try:
+        resolve_host_names(host_definition, selection.host_names)
+    except KeywharfError as exc:
+        return [str(exc)]
 
     completeness_error = _selection_incomplete_host_errors(
         selection.server_name,
@@ -233,6 +282,7 @@ def build_host_config_from_selection(
             host_definition=resolved.host_definition,
             endpoint_id=resolved.endpoint_index,
             auth_id=resolved.authentication_index,
+            host_names=resolve_host_names(resolved.host_definition, selection.host_names),
         )
     )
     return resolved, host_config

@@ -165,6 +165,7 @@ def build_selection_warnings(
     old_server_name: str | None = None,
     new_server_name: str | None = None,
     removed_server_name: str | None = None,
+    removed_aliases: list[str] | None = None,
     old_endpoint_name: str | None = None,
     new_endpoint_name: str | None = None,
     removed_endpoint_name: str | None = None,
@@ -181,6 +182,14 @@ def build_selection_warnings(
     target_server_name = old_server_name or new_server_name
 
     for selection in state.selected_hosts:
+        if selection.server_name == target_server_name and any(
+            name in selection.host_names for name in removed_aliases or []
+        ):
+            warnings.append(
+                f"Local state still enables removed aliases for '{target_server_name}'. "
+                f"Run 'keywharf select {target_server_name} --name <declared-name>' "
+                "with an explicit replacement set."
+            )
         if removed_server_name is not None and selection.server_name == removed_server_name:
             warnings.append(
                 f"Local state still selects '{removed_server_name}'. Run "

@@ -43,7 +43,7 @@ def test_init_creates_workspace_from_package_resources(tmp_path: Path) -> None:
     assert not config.managed_config_path.parent.exists()
     assert not config.managed_keys_dir.exists()
     assert read_json(workspace_root / "state" / "state.json") == {
-        "version": 1,
+        "version": 2,
         "selected_hosts": [],
     }
 

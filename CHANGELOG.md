@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- add shared `Aliases` and explicit per-client `host_names`, with canonical `ServerName` ownership
+- add repeatable `select --name`, interactive name selection, and host `--alias`/`--clear-aliases` CRUD
+- enforce literal SSH names and a case-insensitive repository-wide canonical/alias namespace
+- use state v2 with one strict v1 input adapter; successful select/deselect writes upgrade retained
+  entries, while read-only commands and apply leave state files unchanged
+- render structured multi-name blocks with reserved canonical ownership metadata; retain legacy
+  single-name parsing, canonical status/orphan reporting, and one canonical key copy
+- expose available aliases and enabled names in views; SSH-object JSON replaces `name` with
+  `server_name` and `host_names`
+- document software-first rollout, canonical rename consequences, and coordinated downgrade limits
+- cover alias lifecycle, atomic failure safety, repeated sudo options, and optional local OpenSSH
+  configuration resolution without network access
+
 ## 1.0.6 (2026-08-30)
 
 - replace hand-written Git subprocess orchestration with GitPython's repository and remote object APIs

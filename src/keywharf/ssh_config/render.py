@@ -2,8 +2,26 @@
 
 from __future__ import annotations
 
-from keywharf.domain.models import SSHHostConfig
+from keywharf.domain.models import SSHHostConfig, normalize_host_names
 from keywharf.storage.ssh_files import MANAGED_SSH_HEADER
+
+OWNER_COMMENT = "# keywharf-owner: "
+
+
+def validate_managed_hosts(hosts: list[SSHHostConfig]) -> None:
+    owners: set[str] = set()
+    names: dict[str, str] = {}
+    for host in hosts:
+        owner = host.server_name.casefold()
+        if owner in owners:
+            raise ValueError(f"Duplicate managed ownership for '{host.server_name}'")
+        owners.add(owner)
+        enabled = normalize_host_names(host.server_name, host.host_names)
+        for name in [host.server_name, *enabled]:
+            folded = name.casefold()
+            if folded in names and names[folded] != owner:
+                raise ValueError(f"Ambiguous managed SSH name '{name}'")
+            names[folded] = owner
 
 
 def _indented(indent: int, text: str) -> str:
@@ -13,16 +31,19 @@ def _indented(indent: int, text: str) -> str:
 def _render_comment(comment: str | None, indent: int) -> list[str]:
     if not comment:
         return []
-    return [_indented(indent, f"# {comment}")]
+    lines = comment.splitlines()
+    if any(line.strip().casefold().startswith("keywharf-owner") for line in lines):
+        raise ValueError("Human comments cannot use reserved keywharf-owner metadata")
+    return [_indented(indent, f"# {line}") for line in lines]
 
 
 def render_host_config(host: SSHHostConfig, indent: int = 0) -> str:
-    if not host.name:
-        raise ValueError("SSHHostConfig name is None")
+    names = normalize_host_names(host.server_name, host.host_names)
 
     lines: list[str] = []
     lines.extend(_render_comment(host.comment, indent))
-    lines.append(_indented(indent, f"Host {host.name}"))
+    lines.append(_indented(indent, f"{OWNER_COMMENT}{host.server_name}"))
+    lines.append(_indented(indent, f"Host {' '.join(names)}"))
     lines.extend(_render_comment(host.endpoint.comment, indent + 1))
     if host.endpoint.hostname:
         lines.append(_indented(indent + 1, f"HostName {host.endpoint.hostname}"))
@@ -42,8 +63,9 @@ def render_host_config(host: SSHHostConfig, indent: int = 0) -> str:
 
 
 def render_ssh_config(hosts: list[SSHHostConfig]) -> str:
+    validate_managed_hosts(hosts)
     lines = [MANAGED_SSH_HEADER]
-    for host in sorted(hosts, key=lambda item: item.name or ""):
+    for host in sorted(hosts, key=lambda item: item.server_name or ""):
         lines.append("")
         lines.append(render_host_config(host).rstrip())
     lines.append("")

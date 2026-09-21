@@ -132,3 +132,26 @@ Keep generated noise out of the repository:
 - `*.egg-info/`
 - `build/`
 - `dist/`
+
+## Explicit SSH Name Verification
+
+Focused coverage: `uv run pytest tests/test_aliases.py`. This exercises CLI CRUD, state v1/v2,
+interactive cancellation, repeated sudo argument reconstruction (without executing sudo), ownership
+round trips, disjoint name changes, and managed replacement failure safety. The disposable CLI flow
+creates a shell, adds endpoint/authentication, selects both names, renders/applies, inspects status,
+switches to alias-only and a disjoint alias, reapplies, then deselects and clears with `--allow-empty`.
+
+The optional OpenSSH test uses `ssh -G -F <temporary-config> <name>` for both enabled names and
+compares hostname, port, user, and identity path. It uses a documentation-only literal IP and no
+executable/network-dependent directives. If `ssh` is unavailable, pytest reports an explicit skip.
+Core parser, selection, and apply tests do not depend on this optional integration check.
+
+Run `uv run mypy src/keywharf` in addition to `make check`; CI requests type checking through the
+shared workflow. The configured CI matrix is Linux Python 3.11/3.13, Windows Python 3.11, and macOS
+Python 3.11. A local Linux pass does not establish results on the other platforms.
+
+For packaging checks, build both sdist and wheel, install the wheel into an isolated environment,
+and run initialization outside the source checkout. Verify package JSON/Jinja resources, v2 initial
+state, and CLI help. Redirect `ssh_dir`, host repo, state, managed config, and managed keys into a
+temporary workspace; always pass its explicit path. Exercise v1 read-only normalization followed by
+a successful select/deselect write. Do not let smoke tests discover a real workspace or SSH directory.

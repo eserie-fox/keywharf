@@ -131,6 +131,8 @@ def _serialize_option(parameter: Any, value: Any) -> list[str]:
             return [secondary_options[0]]
         return []
 
+    # Typer repeatable --name/--alias options require one flag per value,
+    # including when values arrive as lists rather than tuples.
     if getattr(parameter, "multiple", False):
         argv: list[str] = []
         for item in _iter_values(value):

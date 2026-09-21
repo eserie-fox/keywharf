@@ -42,7 +42,7 @@ def list_host_command(
 
 def show_host_command(
     ctx: typer.Context,
-    server_name: str = typer.Argument(..., help="Host name to inspect."),
+    server_name: str = typer.Argument(..., help="Canonical ServerName to inspect."),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
 ) -> None:
     """Show one host from the host repo."""
@@ -55,7 +55,10 @@ def show_host_command(
 
 def add_host_command(
     ctx: typer.Context,
-    server_name: str = typer.Argument(..., help="New host name."),
+    server_name: str = typer.Argument(..., help="New canonical ServerName."),
+    aliases: list[str] | None = typer.Option(
+        None, "--alias", help="Declare a literal SSH alias; repeat to replace the alias set."
+    ),
     comment: str | None = typer.Option(None, "--comment", help="Optional host comment."),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
     sudo: bool = typer.Option(
@@ -72,6 +75,7 @@ def add_host_command(
             config,
             server_name=server_name,
             comment=comment,
+            aliases=aliases or None,
         ),
     )
     if result is not None:
@@ -80,9 +84,17 @@ def add_host_command(
 
 def update_host_command(
     ctx: typer.Context,
-    server_name: str = typer.Argument(..., help="Existing host name to update."),
-    new_name: str | None = typer.Option(None, "--new-name", help="Rename the host."),
+    server_name: str = typer.Argument(..., help="Existing canonical ServerName to update."),
+    new_name: str | None = typer.Option(
+        None,
+        "--new-name",
+        help="Change canonical ServerName; existing local references are not migrated.",
+    ),
+    aliases: list[str] | None = typer.Option(
+        None, "--alias", help="Declare a literal SSH alias; repeat to replace the alias set."
+    ),
     comment: str | None = typer.Option(None, "--comment", help="Replace the host comment."),
+    clear_aliases: bool = typer.Option(False, "--clear-aliases", help="Remove all shared aliases."),
     clear_comment: bool = typer.Option(False, "--clear-comment", help="Clear the host comment."),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
     sudo: bool = typer.Option(
@@ -91,6 +103,12 @@ def update_host_command(
 ) -> None:
     """Update one host shell in the host repo."""
 
+    reject_option_and_clear_flag(
+        value=aliases or None,
+        clear=clear_aliases,
+        option_name="--alias",
+        clear_name="--clear-aliases",
+    )
     reject_option_and_clear_flag(
         value=comment,
         clear=clear_comment,
@@ -107,7 +125,9 @@ def update_host_command(
             server_name=server_name,
             new_name=new_name,
             comment=comment,
+            aliases=aliases or None,
             clear_comment=clear_comment,
+            clear_aliases=clear_aliases,
         ),
     )
     if result is not None:
@@ -116,7 +136,7 @@ def update_host_command(
 
 def remove_host_command(
     ctx: typer.Context,
-    server_name: str = typer.Argument(..., help="Host name to remove."),
+    server_name: str = typer.Argument(..., help="Canonical ServerName to remove."),
     json_output: bool = typer.Option(False, "--json", help="Output JSON for scripting."),
     sudo: bool = typer.Option(
         False, "--sudo", help="Re-exec the full command via sudo when root is required."

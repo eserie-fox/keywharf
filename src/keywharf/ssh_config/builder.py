@@ -13,6 +13,7 @@ from keywharf.domain.models import (
     SSHEndpoint,
     SSHExtraConfig,
     SSHHostConfig,
+    normalize_host_names,
 )
 from keywharf.ssh_config.render import render_host_config, render_ssh_config
 
@@ -32,10 +33,12 @@ class SSHHostConfigChoice:
     host_definition: HostDefinition
     endpoint_id: int = 0
     auth_id: int = 0
+    host_names: list[str] | None = None
 
 
 def build_host_config(choice: SSHHostConfigChoice) -> SSHHostConfig:
     host = choice.host_definition
+    host.validate_names()
     if not host.server_name:
         raise KeywharfError("Host definition is missing ServerName")
     if not host.endpoints:
@@ -54,6 +57,10 @@ def build_host_config(choice: SSHHostConfigChoice) -> SSHHostConfig:
             f"Valid range: {valid_range}."
         )
 
+    if choice.host_names is not None and any(
+        name not in [host.server_name, *host.aliases] for name in choice.host_names
+    ):
+        raise KeywharfError("Enabled SSH names must be declared by the definition")
     endpoint = host.endpoints[choice.endpoint_id]
     auth = host.authentication[choice.auth_id]
 
@@ -70,7 +77,10 @@ def build_host_config(choice: SSHHostConfigChoice) -> SSHHostConfig:
         )
 
     return SSHHostConfig(
-        name=host.server_name,
+        server_name=host.server_name,
+        host_names=normalize_host_names(
+            host.server_name, [host.server_name] if choice.host_names is None else choice.host_names
+        ),
         comment=host.comment,
         endpoint=SSHEndpoint(
             hostname=endpoint.hostname,

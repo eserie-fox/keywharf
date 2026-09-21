@@ -21,8 +21,8 @@ def test_state_store_round_trip_is_atomic_and_sorted(tmp_path: Path) -> None:
     config = load_config(config_path, workspace_root=workspace_root)
     state = LocalState(
         selected_hosts=[
-            SelectedHostState(server_name="zeta"),
-            SelectedHostState(server_name="alpha"),
+            SelectedHostState(server_name="zeta", host_names=["zeta"]),
+            SelectedHostState(server_name="alpha", host_names=["alpha"]),
         ]
     )
 

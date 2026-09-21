@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
@@ -26,22 +27,62 @@ def _normalize_path_string(value: str | Path | None) -> str | None:
     return str(value).replace("\\", "/")
 
 
-STATE_SCHEMA_VERSION = 1
+STATE_SCHEMA_VERSION = 2
+
+
+def validate_ssh_name(value: object) -> str:
+    """Literal SSH token, also safe as a canonical managed-key directory component."""
+    if (
+        not isinstance(value, str)
+        or re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]*", value) is None
+        or value.endswith(".")
+        or value.split(".")[0].upper()
+        in {
+            "CON",
+            "PRN",
+            "AUX",
+            "NUL",
+            *(f"COM{i}" for i in range(1, 10)),
+            *(f"LPT{i}" for i in range(1, 10)),
+        }
+    ):
+        raise ValueError(f"Invalid literal SSH name: {value!r}")
+    return value
+
+
+def validate_name_list(value: object, *, label: str, nonempty: bool = False) -> list[str]:
+    if not isinstance(value, list) or (nonempty and not value):
+        raise ValueError(f"{label} must be a {'non-empty ' if nonempty else ''}list of strings")
+    names = [validate_ssh_name(item) for item in value]
+    if len({name.casefold() for name in names}) != len(names):
+        raise ValueError(f"{label} contains duplicate SSH names")
+    return names
+
+
+def normalize_host_names(server_name: str, host_names: object) -> list[str]:
+    validate_ssh_name(server_name)
+    names = validate_name_list(host_names, label="host_names", nonempty=True)
+    return sorted(names, key=lambda name: (name != server_name, name.casefold(), name))
 
 
 @dataclass(slots=True)
 class SelectedHostState:
     server_name: str
+    host_names: list[str]
     endpoint_name: str | None = None
     authentication_name: str | None = None
 
+    def __post_init__(self) -> None:
+        self.host_names = normalize_host_names(self.server_name, self.host_names)
+
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> SelectedHostState:
-        server_name = _clean_string(payload.get("server_name"))
-        if server_name is None:
-            raise ValueError("selected host entry is missing server_name")
+        server_name = validate_ssh_name(payload.get("server_name"))
         return cls(
             server_name=server_name,
+            host_names=validate_name_list(
+                payload.get("host_names"), label="host_names", nonempty=True
+            ),
             endpoint_name=_clean_string(payload.get("endpoint_name")),
             authentication_name=_clean_string(payload.get("authentication_name")),
         )
@@ -49,6 +90,7 @@ class SelectedHostState:
     def to_dict(self) -> dict[str, Any]:
         return {
             "server_name": self.server_name,
+            "host_names": normalize_host_names(self.server_name, self.host_names),
             "endpoint_name": self.endpoint_name,
             "authentication_name": self.authentication_name,
         }
@@ -65,7 +107,10 @@ class LocalState:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> LocalState:
-        version = int(payload.get("version", STATE_SCHEMA_VERSION))
+        # Missing version is the explicitly supported legacy-v1 input form.
+        version = payload.get("version", 1)
+        if type(version) is not int or version not in (1, STATE_SCHEMA_VERSION):
+            raise ValueError(f"Unsupported state file version {version!r}")
         selected_hosts_payload = payload.get("selected_hosts", [])
         if not isinstance(selected_hosts_payload, list):
             raise ValueError("selected_hosts must be a list")
@@ -73,9 +118,16 @@ class LocalState:
         for item in selected_hosts_payload:
             if not isinstance(item, dict):
                 raise ValueError("selected_hosts entries must be objects")
+            if version == 1:
+                if "host_names" in item:
+                    raise ValueError("v1 state must not contain host_names")
+                item = {**item, "host_names": [item.get("server_name")]}
             entries.append(SelectedHostState.from_dict(item))
+        names = [item.server_name.casefold() for item in entries]
+        if len(set(names)) != len(names):
+            raise ValueError("duplicate selection in state")
         return cls(
-            version=version,
+            version=STATE_SCHEMA_VERSION,
             selected_hosts=entries,
         )
 
@@ -196,15 +248,29 @@ class HostExtraConfig:
 @dataclass(slots=True)
 class HostDefinition:
     server_name: str | None = None
+    aliases: list[str] = field(default_factory=list)
     comment: str | None = None
     endpoints: list[HostEndpointOption] = field(default_factory=list)
     authentication: list[HostAuthenticationOption] = field(default_factory=list)
     extra_config: list[HostExtraConfig] = field(default_factory=list)
 
+    def validate_names(self) -> None:
+        if self.server_name is not None:
+            validate_ssh_name(self.server_name)
+        validate_name_list(self.aliases, label="Aliases")
+        if self.server_name is not None and any(
+            name.casefold() == self.server_name.casefold() for name in self.aliases
+        ):
+            raise ValueError("Aliases must not repeat ServerName")
+
+    def __post_init__(self) -> None:
+        self.validate_names()
+
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> HostDefinition:
         return cls(
-            server_name=_clean_string(payload.get("ServerName")),
+            server_name=payload.get("ServerName"),
+            aliases=payload.get("Aliases", []),
             comment=_clean_string(payload.get("Comment")),
             endpoints=[HostEndpointOption.from_dict(item) for item in payload.get("Endpoint", [])],
             authentication=[
@@ -218,8 +284,11 @@ class HostDefinition:
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {}
+        self.validate_names()
         if self.server_name is not None:
             payload["ServerName"] = self.server_name
+        if self.aliases:
+            payload["Aliases"] = list(self.aliases)
         if self.comment is not None:
             payload["Comment"] = self.comment
         if self.endpoints:
@@ -309,7 +378,8 @@ class SSHExtraConfig:
 
 @dataclass(slots=True)
 class SSHHostConfig:
-    name: str | None = None
+    server_name: str
+    host_names: list[str]
     comment: str | None = None
     endpoint: SSHEndpoint = field(default_factory=SSHEndpoint)
     authentication: SSHAuthentication = field(default_factory=SSHAuthentication)
@@ -337,7 +407,8 @@ class SSHHostConfig:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "name": self.name,
+            "server_name": self.server_name,
+            "host_names": normalize_host_names(self.server_name, self.host_names),
             "comment": self.comment,
             "endpoint": self.endpoint.to_dict(),
             "authentication": self.authentication.to_dict(),

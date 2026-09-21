@@ -33,7 +33,7 @@ def filter_names(items: list[str], pattern: re.Pattern[str] | None) -> list[str]
 
 
 def summarize_host(host: SSHHostConfig) -> str:
-    parts: list[str] = []
+    parts = [f"names={', '.join(host.host_names)}"]
     if host.endpoint.hostname:
         if host.endpoint.port is not None:
             parts.append(f"{host.endpoint.hostname}:{host.endpoint.port}")
@@ -49,7 +49,7 @@ def summarize_host(host: SSHHostConfig) -> str:
 def selection_summary(selection: SelectedHostState | None) -> str:
     if selection is None:
         return "-"
-    parts = [selection.server_name]
+    parts = [selection.server_name, f"names={', '.join(selection.host_names)}"]
     if selection.endpoint_name is not None:
         parts.append(f"endpoint={selection.endpoint_name}")
     if selection.authentication_name is not None:
