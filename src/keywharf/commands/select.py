@@ -9,7 +9,11 @@ from keywharf.commands._privilege import (
     maybe_reexec_with_sudo,
     raise_for_missing_privileges,
 )
-from keywharf.commands._selection_prompt import complete_host_names, complete_selection_names
+from keywharf.commands._selection_prompt import (
+    complete_host_names,
+    complete_host_selector,
+    complete_selection_names,
+)
 from keywharf.commands.context import get_host_definitions, get_manager_config
 from keywharf.services.selections import (
     analyze_select_root_requirements,
@@ -23,7 +27,7 @@ def register(app: typer.Typer) -> None:
     def select_command(
         ctx: typer.Context,
         server_name: str = typer.Argument(
-            ..., help="Canonical ServerName to select from the host repo."
+            ..., help="Host query: ServerName, alias, or endpoint hostname (exact or partial)."
         ),
         endpoint: str | None = typer.Option(
             None,
@@ -69,6 +73,7 @@ def register(app: typer.Typer) -> None:
             subject="the state file",
         )
         host_definitions = get_host_definitions(ctx)
+        server_name = complete_host_selector(host_definitions, query=server_name)
         host_names = complete_host_names(
             host_definitions,
             server_name=server_name,

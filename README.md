@@ -80,9 +80,12 @@ keywharf select demo-node-01 --endpoint direct --auth developer --name demo-node
 keywharf select demo-node-01 --endpoint direct --auth developer --name dev
 ```
 
-All enabled names share one connection block and canonical key copy. Management commands always
-use `ServerName`. Without `--name`, first selection defaults to canonical-only and reselection
-preserves names. A terminal offers a numbered multi-selection with that default when aliases exist.
+All enabled names share one connection block and canonical key copy. `select <query>` finds a host
+by server name, alias, or endpoint hostname, including partial matches. Ambiguity requires a choice;
+see the [matching rules](docs/cli.md#selecting-ssh-names-and-editing-aliases). Other management
+commands use `ServerName`. Discovery does not enable names or choose an endpoint. Without `--name`,
+first selection defaults to canonical-only and reselection preserves names. A terminal offers a
+numbered multi-selection with that default when aliases exist.
 Adding an alias never enables it automatically. Removing an enabled alias requires explicit
 replacement; renaming a canonical identifier requires new client selections even if the old name
 remains an alias.

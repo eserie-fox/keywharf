@@ -15,8 +15,33 @@ from keywharf.domain.models import (
     SelectedHostState,
 )
 from keywharf.services.host_definitions import resolve_host_names
+from keywharf.services.host_search import find_host_candidates
 
 OptionT = TypeVar("OptionT", HostEndpointOption, HostAuthenticationOption)
+
+
+def complete_host_selector(host_definitions: dict[str, HostDefinition], *, query: str) -> str:
+    candidates = find_host_candidates(host_definitions, query)
+    if not candidates:
+        raise KeywharfError(f"No hosts match query: {query!r}.")
+    if len(candidates) == 1:
+        return candidates[0]
+    if not _supports_interactive_selection():
+        raise KeywharfError(
+            f"Host query {query!r} matches multiple hosts and interactive selection "
+            "is unavailable. Pass a canonical ServerName or a more specific query. "
+            f"Candidates: {', '.join(candidates)}."
+        )
+
+    typer.echo(f"Select host matching {query!r}:")
+    for index, server_name in enumerate(candidates, start=1):
+        host = host_definitions[server_name]
+        aliases = ", ".join(host.aliases) or "-"
+        hostnames = (
+            ", ".join(dict.fromkeys(e.hostname for e in host.endpoints if e.hostname)) or "-"
+        )
+        typer.echo(f"{index}. {server_name} | aliases={aliases} | hostnames={hostnames}")
+    return candidates[_prompt_choice("host", len(candidates)) - 1]
 
 
 def complete_host_names(

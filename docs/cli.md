@@ -173,6 +173,26 @@ Behavior:
 
 ## Selecting SSH Names and Editing Aliases
 
+`select <query>` searches server names, declared aliases, and endpoint hostnames. Matching ignores
+case and outer query whitespace. It uses the first nonempty tier: exact server name/alias, exact
+endpoint hostname, then all substring matches across all three fields. Prefix matches participate
+in the same partial-match tier, so they never hide other substring candidates. Empty queries fail.
+Matching several fields/endpoints on the same host still yields one host candidate.
+
+One candidate proceeds to the normal name/endpoint/authentication choices. Multiple candidates
+produce a numbered host chooser showing canonical names, aliases, and hostnames in a terminal.
+Without a terminal, ambiguity fails with canonical candidates; use one of those names or a more
+specific query. No match and cancellation leave state unchanged. Typo matching is not performed.
+
+Discovery only identifies a host: searching an alias does not enable it, and searching an endpoint
+hostname does not select that endpoint. Use `--name` and `--endpoint` explicitly as needed:
+
+```bash
+keywharf select dev --endpoint direct --auth developer --name demo-node-01 --name dev
+# A unique substring works even without a declared short alias:
+keywharf select node-01 --endpoint direct --auth developer
+```
+
 ```bash
 keywharf repo host add demo-node-01 --alias dev --alias work
 # Add endpoint/authentication options separately; aliases do not complete a host shell.
@@ -195,7 +215,8 @@ On host add, omitted `--alias` means no aliases. On update, omission preserves a
 `--alias` replaces them, and `--clear-aliases` empties them. Replacement and clearing conflict.
 Failed edits leave the file unchanged. Edits preserve unrelated fields and array order; they do
 not alter local state or run `apply`. Removal/rename warnings identify affected local selections.
-All management selectors take canonical `ServerName`; aliases are never resolved as identifiers.
+Other management selectors (`repo host ...`, `local show`, `deselect`, and their facades) require
+canonical `ServerName`. Saved selections and render/apply resolution always use canonical identity.
 
 Repo JSON includes `Aliases` when non-empty. Local `selection` JSON includes `host_names`.
 Rendered/current/desired SSH objects now use `server_name` and `host_names` instead of the old

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- let `select` discover hosts by case-insensitive canonical name, alias, or endpoint hostname;
+  prefer exact names, then exact hostnames, then all substring matches, with explicit ambiguity
+  handling and canonical state/ownership preserved
+- preserve option-like positional queries and option values when reconstructing privilege retries
+
 - preserve multiline human comments, internal blank lines, and LF/CRLF equivalence through
   definition loading, SSH rendering/parsing, and local status comparison
 - reject reserved ownership-comment prefixes during structural validation and before repo writes,

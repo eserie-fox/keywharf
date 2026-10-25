@@ -17,17 +17,18 @@ _DEFAULT_PARAMETER_SOURCE_NAMES = {None, "DEFAULT", "DEFAULT_MAP"}
 
 @dataclass(slots=True)
 class CommandInvocation:
-    """Stable, canonical argv for the current command."""
-
     argv: list[str]
+    sudo_index: int | None = None
 
     def display(self) -> str:
         return shlex.join(["keywharf", *self.argv])
 
     def with_sudo_flag(self) -> CommandInvocation:
-        if "--sudo" in self.argv:
-            return CommandInvocation([*self.argv])
-        return CommandInvocation([*self.argv, "--sudo"])
+        argv = [*self.argv]
+        index = len(argv) if self.sudo_index is None else self.sudo_index
+        if index == len(argv) or argv[index] != "--sudo":
+            argv.insert(index, "--sudo")
+        return CommandInvocation(argv, sudo_index=index)
 
     def sudo_exec_args(self) -> list[str]:
         cli_path = Path(sys.executable).resolve().with_name("keywharf")
@@ -43,31 +44,26 @@ def build_command_invocation(
     overrides: Mapping[str, Any] | None = None,
     exclude: tuple[str, ...] = ("sudo",),
 ) -> CommandInvocation:
-    """Build one canonical argv for the current Typer command context."""
-
     override_map = dict(overrides or {})
     excluded_names = set(exclude) | _AUTO_EXCLUDED_PARAMETER_NAMES
     argv: list[str] = []
     context_chain = _context_chain(ctx)
 
-    root_ctx = context_chain[0]
-    argv.extend(
-        _serialize_context_params(root_ctx, excluded_names=excluded_names, overrides=override_map)
-    )
-
-    for command_ctx in context_chain[1:]:
-        command_name = command_ctx.info_name or command_ctx.command.name
-        if command_name:
-            argv.append(command_name)
-        argv.extend(
-            _serialize_context_params(
-                command_ctx,
-                excluded_names=excluded_names,
-                overrides=override_map,
-            )
+    sudo_index = None
+    for index, command_ctx in enumerate(context_chain):
+        if index:
+            command_name = command_ctx.info_name or command_ctx.command.name
+            if command_name:
+                argv.append(command_name)
+        parameters, option_end = _serialize_context_params(
+            command_ctx,
+            excluded_names=excluded_names,
+            overrides=override_map,
         )
+        sudo_index = len(argv) + option_end if option_end is not None else None
+        argv.extend(parameters)
 
-    return CommandInvocation(argv)
+    return CommandInvocation(argv, sudo_index=sudo_index)
 
 
 def _context_chain(ctx: Any) -> list[Any]:
@@ -85,8 +81,9 @@ def _serialize_context_params(
     *,
     excluded_names: set[str],
     overrides: Mapping[str, Any],
-) -> list[str]:
-    argv: list[str] = []
+) -> tuple[list[str], int | None]:
+    arguments: list[str] = []
+    options: list[str] = []
     for parameter in ctx.command.params:
         if not getattr(parameter, "expose_value", True):
             continue
@@ -95,12 +92,14 @@ def _serialize_context_params(
             continue
         value = overrides[name] if name in overrides else ctx.params.get(name)
         if _is_argument_parameter(parameter):
-            argv.extend(_serialize_argument(value))
+            arguments.extend(_serialize_argument(value))
             continue
         if name not in overrides and _is_default_parameter_source(ctx, name):
             continue
-        argv.extend(_serialize_option(parameter, value))
-    return argv
+        options.extend(_serialize_option(parameter, value))
+    if any(argument.startswith("-") for argument in arguments):
+        return [*options, "--", *arguments], len(options)
+    return [*options, *arguments], None
 
 
 def _is_argument_parameter(parameter: Any) -> bool:
@@ -131,8 +130,6 @@ def _serialize_option(parameter: Any, value: Any) -> list[str]:
             return [secondary_options[0]]
         return []
 
-    # Typer repeatable --name/--alias options require one flag per value,
-    # including when values arrive as lists rather than tuples.
     if getattr(parameter, "multiple", False):
         argv: list[str] = []
         for item in _iter_values(value):

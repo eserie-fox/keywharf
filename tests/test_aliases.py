@@ -777,3 +777,134 @@ def test_reserved_ownership_comment_cannot_be_forged_by_human_comment(workspace)
     with pytest.raises(KeywharfError, match="reserved"):
         apply_selected_state(config)
     assert snapshot(workspace[0]) == before
+
+
+@pytest.mark.parametrize("query", ["DEV", "node-01", "192.0.2.10"])
+def test_select_queries_converge_on_same_canonical_state_and_render(workspace, query):
+    config = workspace[1]
+    assert invoke(workspace, "select", SERVER, "--name", SERVER, "--name", "dev").exit_code == 0
+    before = load_state(config)
+    result = invoke(workspace, "select", query, "--name", "dev", "--name", SERVER)
+    assert result.exit_code == 0, result.exception
+    assert load_state(config) == before
+    plan = render_selected_state(config)
+    assert len(plan.resolved_hosts) == len(plan.planned_key_copies) == 1
+    assert plan.resolved_hosts[0].server_name == SERVER
+    assert plan.resolved_hosts[0].host_names == [SERVER, "dev"]
+    assert plan.planned_key_copies[0].target.parent.name == SERVER
+    assert not config.managed_config_path.exists()
+
+
+def test_dash_prefixed_query_survives_sudo_retry(workspace, monkeypatch):
+    captured = []
+
+    def reexec(**kwargs):
+        assert kwargs["sudo_requested"]
+        if captured:
+            return False
+        captured.extend(kwargs["invocation"].with_sudo_flag().argv)
+        return True
+
+    monkeypatch.setattr("keywharf.commands.select.maybe_reexec_with_sudo", reexec)
+    result = invoke(workspace, "select", "--sudo", "--", "-node")
+    assert result.exit_code == 0, result.exception
+    assert not workspace[1].state_path.exists()
+    result = RUNNER.invoke(app, captured)
+    assert result.exit_code == 0, result.exception
+    selection = load_state(workspace[1]).get(SERVER)
+    assert selection.host_names == [SERVER]
+
+
+def test_alias_lookup_does_not_enable_names_and_reselection_preserves_them(workspace):
+    config = workspace[1]
+    assert invoke(workspace, "select", "dev").exit_code == 0
+    assert load_state(config).get(SERVER).host_names == [SERVER]
+    assert invoke(workspace, "select", "work", "--name", "dev").exit_code == 0
+    assert invoke(workspace, "select", "192.0.2.10").exit_code == 0
+    assert load_state(config).get(SERVER).host_names == ["dev"]
+    assert len(load_state(config).selected_hosts) == 1
+
+
+def add_search_peer(config):
+    peer = definition()
+    peer.update(ServerName="demo-node-02", Aliases=[])
+    write_json(config.host_repo_path / "config.json", [peer, definition()])
+
+
+@pytest.mark.parametrize("interactive", [False, True])
+def test_partial_host_query_keeps_prefix_and_substring_candidates(
+    workspace, monkeypatch, interactive
+):
+    config = workspace[1]
+    peer = definition()
+    peer.update(ServerName="node-02", Aliases=[])
+    write_json(config.host_repo_path / "config.json", [peer, definition()])
+    monkeypatch.setattr(
+        "keywharf.commands._selection_prompt._supports_interactive_selection", lambda: interactive
+    )
+    before = snapshot(workspace[0])
+    result = invoke(workspace, "select", "node", input="2\n" if interactive else None)
+    if interactive:
+        assert result.exit_code == 0, result.exception
+        selection = load_state(config).get("node-02")
+        assert selection.host_names == ["node-02"]
+        assert load_state(config).get(SERVER) is None
+    else:
+        assert isinstance(result.exception, KeywharfError)
+        assert snapshot(workspace[0]) == before
+    assert not config.managed_config_path.exists()
+
+
+@pytest.mark.parametrize("query", ["missing", "demo-node", "192.0.2.10"])
+def test_failed_or_ambiguous_query_leaves_workspace_unchanged(workspace, query):
+    config = workspace[1]
+    select(config, ["dev"])
+    add_search_peer(config)
+    before = snapshot(workspace[0])
+    result = invoke(workspace, "select", query)
+    assert isinstance(result.exception, KeywharfError)
+    assert snapshot(workspace[0]) == before
+
+
+def test_host_chooser_then_existing_name_endpoint_and_auth_flow(workspace, monkeypatch):
+    config = workspace[1]
+    add_search_peer(config)
+    payload = read_json(config.host_repo_path / "config.json")
+    original = payload[1]
+    original["Endpoint"].append({"EndPointName": "alternate", "HostName": "192.0.2.11"})
+    original["Authentication"].append({"AuthenticationName": "alternate", "User": "tester"})
+    write_json(config.host_repo_path / "config.json", payload)
+    monkeypatch.setattr(
+        "keywharf.commands._selection_prompt._supports_interactive_selection", lambda: True
+    )
+    result = invoke(workspace, "select", "demo-node", input="1\n3\n2\n2\n")
+    assert result.exit_code == 0, result.exception
+    selection = load_state(config).get(SERVER)
+    assert selection.host_names == ["dev"]
+    assert selection.endpoint_name == selection.authentication_name == "alternate"
+    assert len(load_state(config).selected_hosts) == 1
+
+
+def test_cancelled_host_choice_does_not_save(workspace, monkeypatch):
+    config = workspace[1]
+    add_search_peer(config)
+    monkeypatch.setattr(
+        "keywharf.commands._selection_prompt._supports_interactive_selection", lambda: True
+    )
+    before = snapshot(workspace[0])
+    assert invoke(workspace, "select", "demo-node", input="").exit_code != 0
+    assert snapshot(workspace[0]) == before
+
+
+def test_hostname_lookup_does_not_choose_matching_endpoint(workspace):
+    config = workspace[1]
+    payload = definition()
+    payload["Endpoint"].append({"EndPointName": "alternate", "HostName": "192.0.2.11"})
+    write_json(config.host_repo_path / "config.json", [payload])
+    before = snapshot(workspace[0])
+    failure = invoke(workspace, "select", "192.0.2.11")
+    assert isinstance(failure.exception, KeywharfError)
+    assert snapshot(workspace[0]) == before
+    result = invoke(workspace, "select", "192.0.2.11", "--endpoint", "direct")
+    assert result.exit_code == 0, result.exception
+    assert load_state(config).get(SERVER).endpoint_name == "direct"
