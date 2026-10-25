@@ -104,7 +104,8 @@ selected definitions to be complete. CRUD preserves shared arrays and aliases on
 
 `LocalState.from_dict` contains the one bounded v1 input adapter. Everything after this boundary
 uses v2; successful state writes persist v2. Read-only commands and apply do not migrate files.
-No migration registry, per-alias configuration, or alias lookup for management selectors is used.
+No migration registry or per-alias configuration is used. Stored references and management
+selectors remain canonical after the explicit `select` discovery boundary described below.
 
 Managed rendering adds `# keywharf-owner: <ServerName>` immediately before each `Host` directive.
 The parser consumes this reserved metadata separately from human comments and adapts legacy
@@ -117,6 +118,24 @@ Key targets remain `<managed_keys_dir>/<ServerName>/<source-basename>`. Name-onl
 key copies or movement. Apply validates first, copies needed keys, atomically replaces the managed
 fragment, then cleans stale keys. A failed replacement cannot trigger stale cleanup. Empty-state
 protection and `--allow-empty` still apply. Aliases never alter known-hosts or user SSH policy.
+
+## Host Discovery Boundary
+
+`select` first resolves a query into one canonical `ServerName`, then runs the existing enabled-name,
+endpoint, authentication, validation, and state-write procedure. Search input is never persisted or
+used for ownership. Resolving a query does not enable an alias, infer an endpoint from a matching
+address, or repair stale selections. Other management commands and state resolution stay canonical.
+
+`services/host_search.py` is a pure search over the validated canonical definition map. For each
+host it finds the best matching tier: exact declared name, exact endpoint hostname, then all
+substring matches across names/hostnames. The CLI guide defines the full matching contract. Search
+returns canonical spelling, with one candidate per host in stable name order. Endpoint addresses
+need not be unique; declared names retain the existing case-insensitive namespace constraint.
+
+The CLI owns zero/one/many candidate handling: report no match, accept one candidate, or prompt for
+one host using the existing numbered-choice helper. Without a terminal, ambiguity reports candidates
+and requires a more specific query. Cancellation and errors precede the existing final save. No
+search indexes, additional state schema, fuzzy dependencies, or changes to render/apply are needed.
 
 ## Human Comment Boundary
 

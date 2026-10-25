@@ -43,6 +43,8 @@ keywharf --workspace {{ workspace_root }} install-include
 
 `select` still accepts explicit `--endpoint` and `--auth` stable names. If one side has a single candidate, it is selected automatically. If one side has multiple candidates, `select` prompts in an interactive terminal and fails fast in noninteractive environments until you pass the stable name explicitly. Local state keeps name-based selectors; singleton selections may leave `endpoint_name` or `authentication_name` as `null`.
 
+`select <query>` finds a host by case-insensitive server name, alias, or endpoint hostname. Exact declared names win over exact endpoint hostnames, followed by all substring matches. Ambiguous queries prompt in a terminal or fail with canonical candidates in scripts. Discovery does not enable SSH names or choose an endpoint; use `--name` and `--endpoint` as needed. Other management commands require canonical `ServerName`.
+
 Hosts may exist as shells before they are usable. `validate` reports every host that is still missing endpoint options, authentication options, or both. `render` and `apply` only require selected hosts to be complete.
 
 Optional shared `Aliases` declare available SSH names for each canonical `ServerName`:
