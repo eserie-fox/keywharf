@@ -2,10 +2,14 @@
 
 ## Unreleased
 
+## 1.1.1 (2026-10-25)
+
 - let `select` discover hosts by case-insensitive canonical name, alias, or endpoint hostname;
   prefer exact names, then exact hostnames, then all substring matches, with explicit ambiguity
   handling and canonical state/ownership preserved
 - preserve option-like positional queries and option values when reconstructing privilege retries
+
+## 1.1.0 (2026-09-22)
 
 - preserve multiline human comments, internal blank lines, and LF/CRLF equivalence through
   definition loading, SSH rendering/parsing, and local status comparison
